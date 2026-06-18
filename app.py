@@ -203,19 +203,36 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (글자 수/간격 자동 맞춤 + 모바일 1줄 고정)
+# 📊 현재 생존 현황 (글자 수 밀착 + 가비지 여백 완전 제거)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
-# [핵심] 글자 수에 맞춰서 자동으로 띄어쓰기(간격)를 4글자 길이로 동일하게 맞춰주는 함수
-def format_name(n):
-    n = str(n)
-    if len(n) == 2:
-        return f"{n[0]}&nbsp;&nbsp;&nbsp;&nbsp;{n[1]}"
-    elif len(n) == 3:
-        return f"{n[0]}&nbsp;{n[1]}&nbsp;{n[2]}"
-    else:
-        return n[:4] # 4글자는 그대로
+# 💡 [핵심 CSS] 1열이 여백을 먹지 않고 글자 크기만큼만 딱 달라붙게 만듭니다.
+st.markdown("""
+    <style>
+    /* 현황판 구역의 가로 정렬 및 간격 고정 */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
+        gap: 10px !important; /* 텍스트와 버튼 사이의 딱 보기 좋은 최소 간격 */
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* 1열: 내용물(글자) 크기만큼만 넓이 차지, 절대 줄바꿈 금지 */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"]:nth-child(1) {
+        width: max-content !important;
+        flex: 0 0 auto !important; 
+        min-width: 0px !important;
+        padding: 0px !important;
+        white-space: nowrap !important; /* PC 줄바꿈 원천 차단 */
+    }
+    
+    /* 2열(버튼): 1열 바로 옆에 밀착 */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"]:nth-child(2) {
+        min-width: 0px !important;
+        padding: 0px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 df = pd.read_sql("SELECT name, mexico, korea, paid FROM bets", conn)
 
@@ -228,25 +245,24 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 이 구역에만 모바일 CSS가 먹히도록 마커 삽입
+    # 이 구역에만 정밀 타겟팅되도록 마커 삽입
     with st.container():
         st.markdown('<div class="status-board-marker"></div>', unsafe_allow_html=True)
         
-        header_cols = st.columns([5, 2])
-        # 헤더와 데이터 폰트 크기 15px 완벽 통일
-        header_string = "<div style='font-size: 15px;'><b>이&nbsp;&nbsp;&nbsp;&nbsp;름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예&nbsp;측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>"
+        # CSS가 1열과 2열의 크기를 통제하므로 비율 설정 없이 2칸으로만 나눔
+        header_cols = st.columns(2)
+        
+        # [수정] 방장님 요청: '이' 앞 한칸, '름' 뒤 한칸 추가 (반각 스페이스로 밸런스 조절)
+        header_string = "<div style='font-size: 15px;'><b>&nbsp;이&nbsp;&nbsp;&nbsp;&nbsp;름&nbsp; &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예&nbsp;측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>"
         header_cols[0].markdown(header_string, unsafe_allow_html=True)
         header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
         for index, row in df.iterrows():
-            row_cols = st.columns([5, 2])
+            row_cols = st.columns(2)
             
-            # 1. format_name()을 통해 글자 수에 맞게 간격 정렬
-            # 2. 폰트 15px 통일
-            # 3. 생존/완료 사이 띄어쓰기 완전 제거
-            formatted_name = format_name(row['name'])
-            info_string = f"<div style='font-size: 15px; padding-top: 5px;'><b>{formatted_name}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
+            # [수정] 3글자 사이 띄어쓰기 완전 제거 (원본 이름 그대로 유지), PC 줄바꿈 방지 적용
+            info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
             
             if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
