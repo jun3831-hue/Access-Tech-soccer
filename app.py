@@ -61,7 +61,7 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (방장님 아이디어: 표 크기 한정 CSS)
+# 🎨 화면 UI 시작 (핀셋 타겟팅 CSS)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
@@ -69,7 +69,7 @@ st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 st.markdown("""
     <style>
     /* 1. 모바일에서 버튼 크기 축소 */
-    @media (max-width: 300px) {
+    @media (max-width: 768px) {
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
@@ -77,19 +77,15 @@ st.markdown("""
         }
     }
     
-    /* 2. 🚨 [핵심] 현황판 표 크기를 600px로 제한하고 가운데 정렬 */
-    div[data-testid="stVerticalBlock"]:has(#status-board-limit) {
-        max-width: 400px !important;
-        margin: 0 auto !important; /* PC 화면에서 중앙 정렬 */
-    }
-    
-    /* 3. 현황판 내부의 줄바꿈을 절대 금지 (모바일용 안전벨트) */
-    div[data-testid="stVerticalBlock"]:has(#status-board-limit) div[data-testid="stHorizontalBlock"] {
+    /* 2. 🚨 [핵심] 'board-row' 이름표가 있는 가로줄(stHorizontalBlock)만 콕 집어서 조작! (투표 폼은 간섭 X) */
+    div[data-testid="stHorizontalBlock"]:has(.board-row) {
+        max-width: 400px !important;   /* 방장님 세팅: 400px 제한 */
+        margin: 0 auto !important;     /* PC에서 정중앙 배치 */
         flex-direction: row !important;
-        flex-wrap: nowrap !important;
+        flex-wrap: nowrap !important;  /* 줄바꿈 절대 방지 */
         align-items: center !important;
     }
-    div[data-testid="stVerticalBlock"]:has(#status-board-limit) div[data-testid="column"] {
+    div[data-testid="stHorizontalBlock"]:has(.board-row) > div[data-testid="column"] {
         min-width: 0px !important;
         padding: 0px 2px !important;
     }
@@ -113,7 +109,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------
-# 🎯 신규 투표하기 폼 (스트림릿 순정 반응형)
+# 🎯 신규 투표하기 폼 (이제 간섭 안 받음 -> 모바일 반응형 정상 작동)
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
@@ -198,7 +194,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (최대 너비 600px 고정 블록)
+# 📊 현재 생존 현황 (방장님 세팅: 400px 제한 & 3:2 비율)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -212,25 +208,24 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 💡 [핵심] 컨테이너로 감싸고 마커를 달아서, 이 안의 내용물만 600px를 넘지 못하게 가둡니다.
-    with st.container():
-        st.markdown('<div id="status-board-limit"></div>', unsafe_allow_html=True)
+    # [방장님 세팅] 3:2 비율 적용
+    header_cols = st.columns([3, 2])
+    # [수정] class='board-row' 삽입 -> CSS가 이 줄만 타겟팅함!
+    header_cols[0].markdown("<div class='board-row' style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+    header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
+    
+    for index, row in df.iterrows():
+        # [방장님 세팅] 3:2 비율 적용
+        row_cols = st.columns([3, 2])
         
-        # 600px 안에서 4:1로 나누므로 거리가 절대 멀어지지 않습니다.
-        header_cols = st.columns([3, 2])
-        header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
-        header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
-        st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
+        # [수정] 데이터 줄에도 class='board-row' 삽입
+        info_string = f"<div class='board-row' style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
+        row_cols[0].markdown(info_string, unsafe_allow_html=True)
         
-        for index, row in df.iterrows():
-            row_cols = st.columns([3, 2])
-            
-            info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
-            row_cols[0].markdown(info_string, unsafe_allow_html=True)
-            
-            if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
-                st.session_state.target_name = row['name']
-                st.rerun()
+        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
+            st.session_state.target_name = row['name']
+            st.rerun()
 
     if is_finished:
         winners = df[df['status_text'] == '당첨']['name'].tolist()
