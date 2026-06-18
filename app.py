@@ -32,6 +32,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS bets
              (name TEXT PRIMARY KEY, pin TEXT, mexico INT, korea INT, paid TEXT)''')
 conn.commit()
 
+# Session State 초기화
 if "target_name" not in st.session_state:
     st.session_state.target_name = None
 
@@ -75,29 +76,6 @@ live_mx, live_kr = get_live_score()
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
-st.markdown("""
-    <style>
-    div[data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        gap: 5px !important; 
-    }
-    div[data-testid="column"] {
-        padding: 0px 2px !important;
-        min-width: 0px !important;
-    }
-    @media (max-width: 600px) {
-        .stButton > button {
-            padding: 0px 5px !important;
-            font-size: 13px !important;
-            height: 35px !important;
-            min-height: 35px !important;
-        }
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 if is_open:
     time_left = DEADLINE - now_kst
     hours, remainder = divmod(time_left.seconds, 3600)
@@ -108,6 +86,7 @@ elif not is_finished:
 else:
     st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
 
+# [스코어보드 한 줄 통합]
 st.markdown(f"""
     <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
         <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
@@ -119,6 +98,7 @@ st.markdown(f"""
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
+    # 무리한 압축을 버리고 안정적인 2x2 배치. 점수 입력은 부피가 작은 드롭다운(selectbox)으로 교체
     col1, col2 = st.columns(2)
     with col1:
         name = st.text_input("이름 (본명)", disabled=not is_open)
@@ -127,11 +107,11 @@ with st.form("new_betting_form"):
         
     col3, col4 = st.columns(2)
     with col3:
-        mexico_score = st.number_input("멕시코 예상", min_value=0, step=1, disabled=not is_open)
+        mexico_score = st.selectbox("멕시코 예상", options=list(range(15)), disabled=not is_open)
     with col4:
-        korea_score = st.number_input("한국 예상", min_value=0, step=1, disabled=not is_open)
+        korea_score = st.selectbox("한국 예상", options=list(range(15)), disabled=not is_open)
     
-    submitted = st.form_submit_button("투표 제출하기", disabled=not is_open)
+    submitted = st.form_submit_button("투표 제출하기", disabled=not is_open, use_container_width=True)
     
     if submitted and is_open:
         if not name or not pin:
@@ -166,18 +146,18 @@ if st.session_state.target_name and is_open:
         
         new_mx, new_kr = 0, 0
         if action_type == "수정":
-            st.info("새로운 예측 점수를 입력하세요.")
+            st.info("새로운 예측 점수를 선택하세요.")
             c1, c2 = st.columns(2)
             with c1:
-                new_mx = st.number_input("멕시코 새 점수", min_value=0, step=1)
+                new_mx = st.selectbox("멕시코 새 점수", options=list(range(15)))
             with c2:
-                new_kr = st.number_input("한국 새 점수", min_value=0, step=1)
+                new_kr = st.selectbox("한국 새 점수", options=list(range(15)))
                 
         c_submit, c_cancel = st.columns(2)
         with c_submit:
-            confirm_btn = st.form_submit_button("✅ 실행하기")
+            confirm_btn = st.form_submit_button("✅ 실행하기", use_container_width=True)
         with c_cancel:
-            cancel_btn = st.form_submit_button("❌ 취소하기")
+            cancel_btn = st.form_submit_button("❌ 취소하기", use_container_width=True)
             
         if cancel_btn:
             st.session_state.target_name = None
@@ -203,7 +183,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (크게 키우고 간격 벌린 구조)
+# 📊 현재 생존 현황
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -217,34 +197,24 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    header_cols = st.columns([4, 1])
-    header_html = """
-    <div style='display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 5px; color: #555;'>
-        <span style='flex: 1; text-align: left;'>이름</span>
-        <span style='flex: 1; text-align: center;'>예측</span>
-        <span style='flex: 1; text-align: right;'>상태/입금</span>
-    </div>
-    """
-    header_cols[0].markdown(header_html, unsafe_allow_html=True)
-    header_cols[1].markdown("<div style='text-align: center; font-size: 14px; font-weight: bold; color: #555;'>관리</div>", unsafe_allow_html=True)
-    st.markdown("<hr style='margin:0px 0px 10px 0px;'>", unsafe_allow_html=True)
-    
     for index, row in df.iterrows():
-        row_cols = st.columns([4, 1])
-        
-        # 글자 크기를 확 키우고(16px), 좌/중/우 정렬로 공간을 꽉 채우는 마법
-        info_html = f"""
-        <div style='display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; padding-top: 5px;'>
-            <span style='flex: 1; text-align: left;'>{row['name']}</span>
-            <span style='flex: 1; text-align: center; color: #d32f2f;'>{row['mexico']} : {row['korea']}</span>
-            <span style='flex: 1; text-align: right; font-size: 14px; font-weight: normal;'>{row['status_text']} / {row['paid_mark']}</span>
-        </div>
-        """
-        row_cols[0].markdown(info_html, unsafe_allow_html=True)
-        
-        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
-            st.session_state.target_name = row['name']
-            st.rerun()
+        # 각 사람의 데이터를 네모난 테두리(Box) 안에 넣어서 앱 UI처럼 분리
+        with st.container(border=True):
+            row_cols = st.columns([3, 1], vertical_alignment="center")
+            
+            # [핵심] 양끝으로 밀어내지 않고(flex-start), 글자 간격(gap)을 20px로 시원하게 벌려서 정렬
+            info_html = f"""
+            <div style='display: flex; gap: 20px; align-items: center; padding-left: 5px;'>
+                <span style='font-size: 16px; font-weight: bold;'>{row['name']}</span>
+                <span style='font-size: 16px; color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span>
+                <span style='font-size: 14px; color: #555;'>{row['status_text']} / {row['paid_mark']}</span>
+            </div>
+            """
+            row_cols[0].markdown(info_html, unsafe_allow_html=True)
+            
+            if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open, use_container_width=True):
+                st.session_state.target_name = row['name']
+                st.rerun()
 
     if is_finished:
         winners = df[df['status_text'] == '🎉당첨']['name'].tolist()
