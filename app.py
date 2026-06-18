@@ -15,8 +15,8 @@ ACCOUNT_INFO = '카카오페이 또는 카카오뱅크 3333-10-3569994 전광용
 # 🔑 [필수 입력] football-data.org에서 발급받은 API 토큰을 여기에 넣으세요!
 API_KEY = "7a57cc65db3f47e4adea9e1468b053e1"
 
-# 🔄 [자동 새로고침 설정] 60,000밀리초(1분)마다 웹페이지가 알아서 새로고침 됩니다.
-st_autorefresh(interval=60000, key="score_auto_refresh")
+# 🔄 [자동 새로고침 설정] 10,000밀리초(10초)마다 웹페이지가 알아서 새로고침 됩니다.
+st_autorefresh(interval=10000, key="score_auto_refresh")
 
 # ⏰ [시간 설정] 한국 시간 기준 마감일시 설정
 DEADLINE = datetime(2026, 6, 19, 10, 0, 0)
@@ -32,7 +32,7 @@ conn.commit()
 # ------------------------------------------------
 # 📡 football-data.org 실시간 스코어 연동 함수
 # ------------------------------------------------
-@st.cache_data(ttl=30) # 30초 동안은 임시 저장된 데이터를 써서 API 호출 낭비를 막음
+@st.cache_data(ttl=10) # 10초 동안은 임시 저장된 데이터를 써서 API 호출 낭비를 막음
 def get_live_score():
     if API_KEY == "여기에_발급받은_토큰을_넣으세요" or not API_KEY:
         return 0, 0 # 키가 없으면 기본값 0:0 출력
@@ -86,11 +86,11 @@ else:
 # 상단 실시간 스코어보드 (1분마다 자동으로 숫자가 바뀜)
 col_score1, col_score2, col_score3 = st.columns([1, 1, 1])
 with col_score1:
-    st.metric("🇰🇷 한국 (실시간)", live_kr)
+    st.metric("멕시코", live_kr)
 with col_score2:
     st.markdown("<h2 style='text-align: center;'>VS</h2>", unsafe_allow_html=True)
 with col_score3:
-    st.metric("🇲🇽 멕시코 (실시간)", live_mx)
+    st.metric("한국", live_mx)
 
 st.markdown("---")
 
@@ -107,9 +107,9 @@ with st.form("betting_form"):
         
     col3, col4 = st.columns(2)
     with col3:
-        korea_score = st.number_input("🇰🇷 한국 예상 점수", min_value=0, step=1, disabled=not is_open)
+        korea_score = st.number_input("멕시코 예상 점수", min_value=0, step=1, disabled=not is_open)
     with col4:
-        mexico_score = st.number_input("🇲🇽 멕시코 예상 점수", min_value=0, step=1, disabled=not is_open)
+        mexico_score = st.number_input("한국 예상 점수", min_value=0, step=1, disabled=not is_open)
     
     submitted = st.form_submit_button("투표 / 수정하기", disabled=not is_open)
     
@@ -143,7 +143,7 @@ df = pd.read_sql("SELECT name, korea, mexico, paid FROM bets", conn)
 if not df.empty:
     df['상태'] = df.apply(lambda x: '☠️ 탈락' if (x['korea'] < live_kr) or (x['mexico'] < live_mx) else '🏃 생존', axis=1)
     df.rename(columns={'name': '이름', 'korea': '한국(예상)', 'mexico': '멕시코(예상)', 'paid': '입금확인'}, inplace=True)
-    df = df[['이름', '한국(예상)', '멕시코(예상)', '상태', '입금확인']]
+    df = df[['이름', '멕시코(예상)', '한국(예상)', '상태', '입금확인']]
     st.dataframe(df, use_container_width=True, hide_index=True)
 else:
     st.write("아직 투표한 사람이 없습니다.")
