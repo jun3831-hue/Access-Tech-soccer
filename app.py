@@ -197,11 +197,11 @@ if not df.empty:
     df['예측'] = df['mexico'].astype(str) + " : " + df['korea'].astype(str)
     
     # 3. 방장님 요청: 머리글 가운데 4칸 띄움
-    df['이    름'] = df['name']
-    df['🛠️ 관리'] = False  # 체크박스 기본값
+    df['이름'] = df['name']
+    df['변경'] = False  # 체크박스 기본값
     
     # 4. 방장님 요청 열 순서 재배치
-    display_df = df[['🚥 상태', '이    름', '예측', '입금', '🛠️ 관리']]
+    display_df = df[['🚥 상태', '이름', '예측', '입금', '변경']]
     
     # 5. 스트림릿 순정 Data Editor 출력
     # (key를 가변으로 주어 폼 열고 닫을 때 체크박스 자동 해제되도록 설계)
@@ -210,17 +210,17 @@ if not df.empty:
         key=f"data_editor_{st.session_state.target_name}",
         hide_index=True,
         use_container_width=True,
-        disabled=["🚥 상태", "이    름", "예측", "입금"], # 관리 열만 조작 가능
+        disabled=["🚥 상태", "이름", "예측", "입금"], # 관리 열만 조작 가능
         column_config={
-            "🛠️ 관리": st.column_config.CheckboxColumn("🛠️ 관리", default=False)
+            "변경": st.column_config.CheckboxColumn("변경", default=False)
         }
     )
     
     # 6. 체크박스 감지 로직
     # 관리 열이 True(체크됨)인 행을 찾아서 target_name으로 등록하고 새로고침
-    checked_rows = edited_df[edited_df['🛠️ 관리'] == True]
+    checked_rows = edited_df[edited_df['변경'] == True]
     if not checked_rows.empty:
-        selected_name = checked_rows.iloc[0]['이    름']
+        selected_name = checked_rows.iloc[0]['이름']
         if st.session_state.target_name != selected_name:
             st.session_state.target_name = selected_name
             st.rerun()
