@@ -206,11 +206,10 @@ if not df.empty:
     for index, row in df.iterrows():
         row_cols = st.columns([4, 1])
         
-        # [핵심] 기존의 가장 안정적이었던 텍스트 결합 방식 + 폰트 크기 16px + 띄어쓰기 간격 확장
         info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']}</div>"
         row_cols[0].markdown(info_string, unsafe_allow_html=True)
         
-        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open, use_container_width=True):
+        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
             st.session_state.target_name = row['name']
             st.rerun()
 
