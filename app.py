@@ -73,8 +73,7 @@ live_mx, live_kr = get_live_score()
 # ------------------------------------------------
 # 🎨 화면 UI 시작
 # ------------------------------------------------
-st.title("⚽ 한국 vs 멕시코 점수 예측(승자 독식)")
-st.subheader("🏆 참가비 추가 입금 시 전광용2 등으로 추가 예측 가능")
+st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 if is_open:
@@ -204,7 +203,7 @@ if not df.empty:
     # 표 머리글 배치
     header_cols = st.columns([1.5, 2, 2, 1])
     header_cols[0].markdown("**이름**")
-    header_cols[1].markdown("**예측 (멕시코:한국)**")
+    header_cols[1].markdown("**예측 (멕:한)**")
     header_cols[2].markdown("**상태/입금**")
     header_cols[3].markdown("**관리**")
     st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
