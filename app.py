@@ -59,14 +59,13 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (문제 되던 악성 CSS 전면 삭제)
+# 🎨 화면 UI 시작
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 신규 투표 폼 버튼 크기 최적화용 순수 CSS만 남김 */
     @media (max-width: 768px) {
         .stButton > button {
             padding: 0px 5px !important;
@@ -179,7 +178,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (스트림릿 순정 표 + 체크박스 완벽 적용)
+# 📊 현재 생존 현황 (잘림 방지 + 생존/탈락 자동 정렬)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -192,35 +191,45 @@ if not df.empty:
     else:
         df['🚥 상태'] = df.apply(lambda x: '🔴 탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🟢 생존', axis=1)
     
+    # 💡 [정렬 핵심] 당첨(1) -> 생존(2) -> 탈락(3) 순서로 보이지 않는 랭킹 부여
+    sort_mapping = {'🎉 당첨': 1, '🟢 생존': 2, '🔴 탈락': 3}
+    df['sort_key'] = df['🚥 상태'].map(sort_mapping)
+    
+    # 상태 순서대로 먼저 정렬하고, 상태가 같으면 이름 가나다순으로 정렬
+    df = df.sort_values(by=['sort_key', 'name']).reset_index(drop=True)
+    
     # 2. 입금 및 예측 데이터 가공
     df['입금'] = df['paid'].apply(lambda x: '✅ 완료' if '완료' in x else '❌ 미입금')
     df['예측'] = df['mexico'].astype(str) + " : " + df['korea'].astype(str)
     
     # 3. 방장님 요청: 머리글 가운데 4칸 띄움
-    df['이름'] = df['name']
-    df['변경'] = False  # 체크박스 기본값
+    df['이    름'] = df['name']
+    df['변경'] = False  # 체크박스 기본값 (이모티콘 제거 완료)
     
-    # 4. 방장님 요청 열 순서 재배치
-    display_df = df[['🚥 상태', '이름', '예측', '입금', '변경']]
+    # 4. 화면에 띄울 열 순서 최종 조립
+    display_df = df[['🚥 상태', '이    름', '예측', '입금', '변경']]
+    
+    # 💡 [높이 조절 핵심] 데이터 개수에 맞춰 표 높이를 동적으로 늘려줌 (1줄당 약 36px + 위아래 여백)
+    # 이렇게 하면 10명을 넘어가도 스크롤에 갇히지 않고 쭉 늘어납니다.
+    dynamic_height = (len(display_df) + 1) * 36 + 10
     
     # 5. 스트림릿 순정 Data Editor 출력
-    # (key를 가변으로 주어 폼 열고 닫을 때 체크박스 자동 해제되도록 설계)
     edited_df = st.data_editor(
         display_df,
         key=f"data_editor_{st.session_state.target_name}",
         hide_index=True,
         use_container_width=True,
-        disabled=["🚥 상태", "이름", "예측", "입금"], # 관리 열만 조작 가능
+        height=dynamic_height,  # 동적 높이 강제 적용!
+        disabled=["🚥 상태", "이    름", "예측", "입금"], 
         column_config={
             "변경": st.column_config.CheckboxColumn("변경", default=False)
         }
     )
     
     # 6. 체크박스 감지 로직
-    # 관리 열이 True(체크됨)인 행을 찾아서 target_name으로 등록하고 새로고침
     checked_rows = edited_df[edited_df['변경'] == True]
     if not checked_rows.empty:
-        selected_name = checked_rows.iloc[0]['이름']
+        selected_name = checked_rows.iloc[0]['이    름']
         if st.session_state.target_name != selected_name:
             st.session_state.target_name = selected_name
             st.rerun()
