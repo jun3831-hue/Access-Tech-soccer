@@ -200,14 +200,14 @@ if not df.empty:
     
     # 2. 입금 및 예측 데이터 가공
     df['입금'] = df['paid'].apply(lambda x: '✅ 완료' if '완료' in x else '❌ 미입금')
-    df['예측'] = df['mexico'].astype(str) + " : " + df['korea'].astype(str)
+    df['멕시코:한국'] = df['mexico'].astype(str) + " : " + df['korea'].astype(str)
     
     # 3. 방장님 요청: 머리글 가운데 4칸 띄움
-    df['이    름'] = df['name']
+    df['이름'] = df['name']
     df['변경'] = False  # 체크박스 기본값 (이모티콘 제거 완료)
     
     # 4. 화면에 띄울 열 순서 최종 조립
-    display_df = df[['🚥 상태', '이    름', '예측', '입금', '변경']]
+    display_df = df[['🚥 상태', '이름', '멕시코:한국', '입금', '변경']]
     
     # 💡 [높이 조절 핵심] 데이터 개수에 맞춰 표 높이를 동적으로 늘려줌 (1줄당 약 36px + 위아래 여백)
     # 이렇게 하면 10명을 넘어가도 스크롤에 갇히지 않고 쭉 늘어납니다.
@@ -220,7 +220,7 @@ if not df.empty:
         hide_index=True,
         use_container_width=True,
         height=dynamic_height,  # 동적 높이 강제 적용!
-        disabled=["🚥 상태", "이    름", "예측", "입금"], 
+        disabled=["🚥 상태", "이름", "멕시코:한국", "입금"], 
         column_config={
             "변경": st.column_config.CheckboxColumn("변경", default=False)
         }
@@ -229,7 +229,7 @@ if not df.empty:
     # 6. 체크박스 감지 로직
     checked_rows = edited_df[edited_df['변경'] == True]
     if not checked_rows.empty:
-        selected_name = checked_rows.iloc[0]['이    름']
+        selected_name = checked_rows.iloc[0]['이름']
         if st.session_state.target_name != selected_name:
             st.session_state.target_name = selected_name
             st.rerun()
