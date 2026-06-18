@@ -79,7 +79,7 @@ st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 st.markdown("""
     <style>
     /* 📱 오직 모바일(화면 600px 이하)에서만 작동하는 CSS */
-    @media (max-width: 1000px) {
+    @media (max-width: 300px) {
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
