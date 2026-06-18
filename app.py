@@ -78,18 +78,22 @@ st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 모바일에서 칸이 밑으로 떨어지지 않고 무조건 가로 정렬 유지 */
+    /* 모바일에서 칸이 밑으로 떨어지지 않고 무조건 가로 정렬 유지 및 간격 완전 제거 */
     div[data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
+        gap: 0px !important; /* 칸 사이 간격 완전 제거 */
+    }
+    
+    /* 칸 내부의 숨은 투명 여백(패딩) 완전 제거 */
+    div[data-testid="column"] {
+        padding: 0px !important;
+        min-width: 0px !important;
     }
     
     /* 모바일(폭 600px 이하)에서만 폰트/버튼 크기 살짝 압축해서 한 줄에 쏙 들어가게 조절 */
     @media (max-width: 600px) {
-        div[data-testid="stHorizontalBlock"] {
-            gap: 5px !important; /* 칸 사이 틈새 줄이기 */
-        }
         p, div, span {
             font-size: 13px !important;
         }
@@ -244,7 +248,7 @@ if not df.empty:
         # [핵심] 상태와 입금을 하나의 열로 묶음
         row_cols[2].write(f"{row['status_text']} / {row['paid_mark']}")
         
-        # [핵심] 관리 영역을 하나의 '변경' 버튼으로 통합
+        # [핵심] 관리 영역을 하나의 '변경 버튼'으로 통합
         if row_cols[3].button("⚙️ 변경", key=f"btn_{row['name']}", disabled=not is_open):
             st.session_state.target_name = row['name']
             st.rerun()
