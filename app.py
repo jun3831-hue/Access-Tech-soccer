@@ -71,48 +71,33 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (모바일 전용 안전벨트 CSS)
+# 🎨 화면 UI 시작 (해상도 조건 완전히 삭제한 절대 1줄 고정)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 📱 오직 모바일(화면 600px 이하)에서만 작동하는 CSS */
-    @media (max-width: 300px) {
+    /* 1. 버튼 크기만 모바일/태블릿(768px 이하)에서 작아지게 설정 */
+    @media (max-width: 768px) {
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
             min-height: 32px !important;
         }
-        
-        /* 🚨 [핵심] 현황판(마커 있는 곳)의 칸들이 모바일에서 밑으로 떨어지는 본능을 강제로 막음 */
-        div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"] {
-            min-width: 0px !important;
-            padding: 0px 2px !important;
-        }
+    }
+    
+    /* 2. 🚨 [핵심] 해상도(PC/모바일) 상관없이 마커가 있는 현황판은 무조건 가로 1줄 고정! */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"] {
+        min-width: 0px !important;
+        padding: 0px 2px !important;
     }
     </style>
-""", unsafe_allow_html=True)
-
-if is_open:
-    time_left = DEADLINE - now_kst
-    hours, remainder = divmod(time_left.seconds, 3600)
-    minutes, _ = divmod(remainder, 60)
-    st.success(f"⏳ 마감까지 **{time_left.days}일 {hours}시간 {minutes}분** 남았습니다. (오전 10시 마감)")
-elif not is_finished:
-    st.warning("🏃 **투표가 마감되었습니다!** 경기가 진행 중입니다.")
-else:
-    st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
-
-st.markdown(f"""
-    <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
-        <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
-    </div>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------
