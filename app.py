@@ -181,21 +181,26 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (파이프 추가 + 1줄 강제 고정 완벽 대응)
+# 📊 현재 생존 현황 (가로 폭 100% 강제 확장 해제 및 밀착 정렬)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
-# 💡 [핵심 CSS] 위쪽 투표폼은 내버려두고, 오직 '현재 투표 현황' 쪽만 줄바꿈을 원천 차단하는 정밀 타겟팅 CSS
+# 💡 [핵심 CSS] 스트림릿의 비율 분할을 무시하고 콘텐츠 크기(max-content)에 딱 맞게 폭을 잘라냅니다.
 st.markdown("""
     <style>
-    /* st-marker가 있는 구역(현황판) 안의 칸(column)들은 모바일에서도 절대 밑으로 떨어지지 않음 */
-    div[data-testid="stVerticalBlock"]:has(.st-marker) div[data-testid="stHorizontalBlock"] {
+    /* 1. 행(Row) 전체 폭을 내용물 크기만큼만 차지하도록 제한 */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
+        width: max-content !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
+        gap: 15px !important; /* 텍스트와 버튼 사이의 쫀득한 고정 간격 */
     }
-    div[data-testid="stVerticalBlock"]:has(.st-marker) div[data-testid="column"] {
+    /* 2. 열(Column)이 남는 화면 공간을 억지로 나눠먹는 현상 완전 차단 */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"] {
+        width: auto !important;
+        flex: none !important;
         min-width: 0px !important;
-        padding: 0px 5px !important;
+        padding: 0px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -210,24 +215,22 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 🎯 현황판 영역을 하나로 묶고 CSS가 추적할 수 있게 마커(.st-marker)를 달아줍니다.
     with st.container():
-        st.markdown('<div class="st-marker"></div>', unsafe_allow_html=True)
+        # CSS가 현재 현황판 구역만 정확히 타겟팅하도록 마커 삽입
+        st.markdown('<div class="status-board-marker"></div>', unsafe_allow_html=True)
         
-        # [수정] 텍스트 끝부분에 '관리'와 구분되는 파이프(|) 추가
-        header_cols = st.columns([5, 1])
-        header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금 &nbsp;&nbsp;&nbsp;|</b></div>", unsafe_allow_html=True)
-        header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
+        # CSS가 비율을 무시하므로 단순히 2칸(st.columns(2))으로만 선언하면 됩니다.
+        header_cols = st.columns(2)
+        header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+        header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
         for index, row in df.iterrows():
-            row_cols = st.columns([5, 1])
+            row_cols = st.columns(2)
             
-            # [수정] 데이터 끝부분에도 파이프(|) 추가
-            info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']} &nbsp;&nbsp;&nbsp;|</div>"
+            info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']}</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
             
-            # 아담한 사이즈를 유지하며 절대 밑으로 내려가지 않는 버튼
             if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
                 st.session_state.target_name = row['name']
                 st.rerun()
