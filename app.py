@@ -76,6 +76,31 @@ live_mx, live_kr = get_live_score()
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
+st.markdown("""
+    <style>
+    /* 모바일에서 칸이 밑으로 떨어지지 않고 무조건 가로 정렬 유지 */
+    div[data-testid="stHorizontalBlock"] {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* 모바일(폭 600px 이하)에서만 폰트/버튼 크기 살짝 압축해서 한 줄에 쏙 들어가게 조절 */
+    @media (max-width: 600px) {
+        div[data-testid="stHorizontalBlock"] {
+            gap: 5px !important; /* 칸 사이 틈새 줄이기 */
+        }
+        p, div, span {
+            font-size: 13px !important;
+        }
+        .stButton > button {
+            padding: 0px 5px !important;
+            font-size: 12px !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 if is_open:
     time_left = DEADLINE - now_kst
     hours, remainder = divmod(time_left.seconds, 3600)
