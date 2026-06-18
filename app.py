@@ -76,6 +76,31 @@ live_mx, live_kr = get_live_score()
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
+# 🛠️ [핵심 수정] 모바일에서 절대로 줄바꿈(밑으로 떨어짐)이 일어나지 않도록 막는 CSS 강제 주입
+st.markdown("""
+    <style>
+    /* 어떤 상황에서도 모바일에서 칸이 밑으로 떨어지지 않게 같은 줄에 강제 고정 */
+    div[data-testid="stHorizontalBlock"] {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    div[data-testid="column"] {
+        min-width: 0px !important;
+        padding: 0px 2px !important;
+    }
+    @media (max-width: 600px) {
+        p, div, span {
+            font-size: 13px !important;
+        }
+        .stButton > button {
+            padding: 0px 5px !important;
+            font-size: 12px !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 if is_open:
     time_left = DEADLINE - now_kst
     hours, remainder = divmod(time_left.seconds, 3600)
@@ -98,7 +123,6 @@ st.markdown(f"""
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
-    # 무리한 압축을 버리고 안정적인 2x2 배치. 점수 입력은 부피가 작은 드롭다운(selectbox)으로 교체
     col1, col2 = st.columns(2)
     with col1:
         name = st.text_input("이름 (본명)", disabled=not is_open)
@@ -183,7 +207,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (안정적인 파이프(|) 2열 구조 원복)
+# 📊 현재 생존 현황 (안정적인 파이프 2열 구조 원복 + 버튼 축소)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -197,7 +221,6 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 4:1 비율로 나누고 머리글 작성
     header_cols = st.columns([4, 1])
     header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
     header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
@@ -209,6 +232,7 @@ if not df.empty:
         info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']}</div>"
         row_cols[0].markdown(info_string, unsafe_allow_html=True)
         
+        # use_container_width 옵션을 완전히 제거하여 본래의 아담한 크기로 원복
         if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
             st.session_state.target_name = row['name']
             st.rerun()
