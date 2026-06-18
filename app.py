@@ -79,7 +79,7 @@ st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 st.markdown("""
     <style>
     /* 📱 오직 모바일(화면 600px 이하)에서만 작동하는 CSS */
-    @media (max-width: 600px) {
+    @media (max-width: 1000px) {
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
@@ -220,13 +220,13 @@ if not df.empty:
         st.markdown('<div class="status-board-marker"></div>', unsafe_allow_html=True)
         
         # 가장 안정적이었던 4:1 비율로 원복
-        header_cols = st.columns([2, 1])
+        header_cols = st.columns([1, 1])
         header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
         header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
         for index, row in df.iterrows():
-            row_cols = st.columns([2, 1])
+            row_cols = st.columns([1, 1])
             
             info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
