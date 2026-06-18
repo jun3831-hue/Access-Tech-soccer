@@ -90,7 +90,7 @@ else:
 # [스코어보드 한 줄 통합] 모바일 공간 절약
 st.markdown(f"""
     <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
-        <h2 style='margin: 0;'>🇲🇽 멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국 🇰🇷</h2>
+        <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
     </div>
 """, unsafe_allow_html=True)
 
@@ -204,7 +204,7 @@ if not df.empty:
     # 표 머리글 배치
     header_cols = st.columns([1.5, 2, 2, 1])
     header_cols[0].markdown("**이름**")
-    header_cols[1].markdown("**예측 (멕:한)**")
+    header_cols[1].markdown("**예측 (멕시코:한국)**")
     header_cols[2].markdown("**상태/입금**")
     header_cols[3].markdown("**관리**")
     st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
