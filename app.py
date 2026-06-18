@@ -78,21 +78,17 @@ st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 모바일에서 칸이 밑으로 떨어지지 않고 무조건 가로 정렬 유지 및 간격 완전 제거 */
+    /* 모바일에서 2열 구조 가로 유지 및 여백 제거 */
     div[data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
-        gap: 0px !important; /* 칸 사이 간격 완전 제거 */
+        gap: 0px !important;
     }
-    
-    /* 칸 내부의 숨은 투명 여백(패딩) 완전 제거 */
     div[data-testid="column"] {
-        padding: 0px !important;
+        padding: 0px 2px !important;
         min-width: 0px !important;
     }
-    
-    /* 모바일(폭 600px 이하)에서만 폰트/버튼 크기 살짝 압축해서 한 줄에 쏙 들어가게 조절 */
     @media (max-width: 600px) {
         p, div, span {
             font-size: 13px !important;
@@ -115,7 +111,7 @@ elif not is_finished:
 else:
     st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
 
-# [스코어보드 한 줄 통합] 모바일 공간 절약
+# [스코어보드 한 줄 통합]
 st.markdown(f"""
     <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
         <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
@@ -127,13 +123,12 @@ st.markdown(f"""
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
-    col1, col2 = st.columns(2)
+    # [핵심] 4개의 입력창을 1줄(4개의 열)로 압축
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         name = st.text_input("이름 (본명)", disabled=not is_open)
     with col2:
         pin = st.text_input("비밀번호 4자리", type="password", max_chars=4, disabled=not is_open)
-        
-    col3, col4 = st.columns(2)
     with col3:
         mexico_score = st.number_input("멕시코 예상", min_value=0, step=1, disabled=not is_open)
     with col4:
@@ -158,7 +153,7 @@ with st.form("new_betting_form"):
 st.markdown("---")
 
 # ------------------------------------------------
-# 🛠️ 투표 수정/삭제 액션 창 (버튼을 눌렀을 때만 나타남)
+# 🛠️ 투표 수정/삭제 액션 창
 # ------------------------------------------------
 if st.session_state.target_name and is_open:
     t_name = st.session_state.target_name
@@ -166,7 +161,6 @@ if st.session_state.target_name and is_open:
     st.warning(f"🛠️ **[{t_name}]님의 투표 관리**")
     st.write("##### 수정하시겠습니까? 삭제하시겠습니까?")
     
-    # 수정 / 삭제 선택 라디오 버튼
     action_type = st.radio("작업 선택", ["수정", "삭제"], horizontal=True, label_visibility="collapsed")
     
     with st.form("action_confirm_form"):
@@ -182,7 +176,6 @@ if st.session_state.target_name and is_open:
             with c2:
                 new_kr = st.number_input("한국 새 점수", min_value=0, step=1)
                 
-        # 폼 제출 버튼
         c_submit, c_cancel = st.columns(2)
         with c_submit:
             confirm_btn = st.form_submit_button("✅ 실행하기")
@@ -213,47 +206,39 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (깔끔한 4열 구조 + 변경 버튼)
+# 📊 현재 생존 현황 (데이터 통합 2열 구조)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
 df = pd.read_sql("SELECT name, mexico, korea, paid FROM bets", conn)
 
 if not df.empty:
-    # 1. 상태 계산 (경기 종료 전/후)
     if is_finished:
         df['status_text'] = df.apply(lambda x: '🎉당첨' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '☠️탈락', axis=1)
     else:
         df['status_text'] = df.apply(lambda x: '☠️탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🏃생존', axis=1)
     
-    # 2. 입금 상태 간소화
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 표 머리글 배치
-    header_cols = st.columns([1.5, 2, 2, 1])
-    header_cols[0].markdown("**이름**")
-    header_cols[1].markdown("**예측 (멕:한)**")
-    header_cols[2].markdown("**상태/입금**")
-    header_cols[3].markdown("**관리**")
+    # [핵심] 컬럼을 딱 2개로 나눔 (비율 4 : 1)
+    header_cols = st.columns([4, 1])
+    header_cols[0].markdown("**이름 &nbsp;|&nbsp; 예측 &nbsp;|&nbsp; 상태/입금**")
+    header_cols[1].markdown("**관리**")
     st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
     
     # 데이터 행 반복 출력
     for index, row in df.iterrows():
-        row_cols = st.columns([1.5, 2, 2, 1])
-        row_cols[0].write(f"**{row['name']}**")
+        row_cols = st.columns([4, 1])
         
-        # [핵심] 점수를 "2 : 0" 형태의 하나의 열로 압축
-        row_cols[1].write(f"{row['mexico']} : {row['korea']}")
+        # [핵심] 여러 데이터를 하나의 텍스트 덩어리로 조립해서 1열에 박아버림
+        info_string = f"**{row['name']}** &nbsp;|&nbsp; {row['mexico']} : {row['korea']} &nbsp;|&nbsp; {row['status_text']} / {row['paid_mark']}"
+        row_cols[0].markdown(info_string)
         
-        # [핵심] 상태와 입금을 하나의 열로 묶음
-        row_cols[2].write(f"{row['status_text']} / {row['paid_mark']}")
-        
-        # [핵심] 관리 영역을 하나의 '변경 버튼'으로 통합
-        if row_cols[3].button("⚙️ 변경", key=f"btn_{row['name']}", disabled=not is_open):
+        # 2열은 오직 버튼 하나만
+        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
             st.session_state.target_name = row['name']
             st.rerun()
 
-    # 경기 종료 후 당첨자 축하 코너
     if is_finished:
         winners = df[df['status_text'] == '🎉당첨']['name'].tolist()
         st.markdown("---")
