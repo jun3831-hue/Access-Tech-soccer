@@ -32,6 +32,11 @@ c.execute('''CREATE TABLE IF NOT EXISTS bets
              (name TEXT PRIMARY KEY, pin TEXT, mexico INT, korea INT, paid TEXT)''')
 conn.commit()
 
+# Session State 초기화 (수정/삭제 버튼 클릭 상태 기억용)
+if "action_type" not in st.session_state:
+    st.session_state.action_type = None
+    st.session_state.action_name = None
+
 # ------------------------------------------------
 # 📡 실시간 스코어 연동 (반환값: 멕시코점수, 한국점수)
 # ------------------------------------------------
@@ -71,7 +76,7 @@ live_mx, live_kr = get_live_score()
 # 🎨 화면 UI 시작
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 맞추기 내기!")
-st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
+st.info(f"💸 **참가비 입금 계좌:** {ACCOUNT_INFO}")
 
 # 마감 상태 메시지
 if is_open:
@@ -87,81 +92,151 @@ else:
 # 상단 스코어보드
 col_score1, col_score2, col_score3 = st.columns([1, 1, 1])
 with col_score1:
-    st.metric("🇲🇽 멕시코", live_mx)
+    st.metric("멕시코", live_mx)
 with col_score2:
     st.markdown("<h2 style='text-align: center;'>VS</h2>", unsafe_allow_html=True)
 with col_score3:
-    st.metric("🇰🇷 한국", live_kr)
+    st.metric("한국", live_kr)
 
 st.markdown("---")
 
 # ------------------------------------------------
-# 📝 투표 및 수정 폼
+# 🎯 신규 투표하기 폼 (오직 처음 투표할 때만 사용)
 # ------------------------------------------------
-st.subheader("🎯 투표하기 / 수정하기")
-with st.form("betting_form"):
+st.subheader("🎯 신규 투표하기")
+with st.form("new_betting_form"):
     col1, col2 = st.columns(2)
     with col1:
         name = st.text_input("이름 (본명)", disabled=not is_open)
     with col2:
-        pin = st.text_input("비밀번호 4자리 (수정용)", type="password", max_chars=4, disabled=not is_open)
+        pin = st.text_input("비밀번호 4자리 (수정/삭제용)", type="password", max_chars=4, disabled=not is_open)
         
     col3, col4 = st.columns(2)
     with col3:
-        mexico_score = st.number_input("🇲🇽 멕시코 예상 점수", min_value=0, step=1, disabled=not is_open)
+        mexico_score = st.number_input("멕시코 예상 점수", min_value=0, step=1, disabled=not is_open)
     with col4:
-        korea_score = st.number_input("🇰🇷 한국 예상 점수", min_value=0, step=1, disabled=not is_open)
+        korea_score = st.number_input("한국 예상 점수", min_value=0, step=1, disabled=not is_open)
     
-    submitted = st.form_submit_button("제출하기", disabled=not is_open)
+    submitted = st.form_submit_button("투표 제출하기", disabled=not is_open)
     
     if submitted and is_open:
         if not name or not pin:
-            st.warning("이름 and 비밀번호를 모두 입력해주세요.")
+            st.warning("이름과 비밀번호를 모두 입력해주세요.")
         else:
-            c.execute("SELECT pin FROM bets WHERE name=?", (name,))
-            row = c.fetchone()
-            
-            if row:
-                if row[0] == pin:
-                    c.execute("UPDATE bets SET mexico=?, korea=? WHERE name=?", (mexico_score, korea_score, name))
-                    conn.commit()
-                    st.success(f"✅ {name}님의 투표가 수정되었습니다!")
-                else:
-                    st.error("❌ 비밀번호가 틀립니다.")
+            c.execute("SELECT name FROM bets WHERE name=?", (name,))
+            if c.fetchone():
+                st.error("❌ 이미 등록된 이름입니다. 기존 투표를 고치려면 아래 현황판에서 이름 우측의 [수정] 버튼을 눌러주세요.")
             else:
                 c.execute("INSERT INTO bets (name, pin, mexico, korea, paid) VALUES (?, ?, ?, ?, ?)", 
                           (name, pin, mexico_score, korea_score, '❌ 미입금'))
                 conn.commit()
                 st.success(f"🎉 {name}님 투표 완료!")
+                st.rerun()
 
 st.markdown("---")
 
 # ------------------------------------------------
-# 📊 결과 확인 및 탈락/당첨 로직 처리
+# 🔑 버튼 클릭 시 나타나는 비밀번호 인증 및 액션 실행 창
 # ------------------------------------------------
-st.subheader("📊 현재 생존 현황")
+if st.session_state.action_type and is_open:
+    target_name = st.session_state.action_name
+    action_title = "투표 수정" if st.session_state.action_type == "edit" else "투표 삭제"
+    
+    st.info(f"🔒 **[{target_name}]님의 {action_title} 절차**")
+    with st.form("action_confirm_form"):
+        input_pin = st.text_input("본인의 비밀번호 4자리를 입력하세요", type="password", max_chars=4)
+        
+        # '수정' 버튼을 눌렀을 때만 새로운 점수 입력창을 보여줌
+        new_mx, new_kr = 0, 0
+        if st.session_state.action_type == "edit":
+            c2_1, c2_2 = st.columns(2)
+            with c2_1:
+                new_mx = st.number_input("멕시코 새로운 예상 점수", min_value=0, step=1)
+            with c2_2:
+                new_kr = st.number_input("한국 새로운 예상 점수", min_value=0, step=1)
+        
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            submit_action = st.form_submit_button("확인 및 실행")
+        with btn_col2:
+            cancel_action = st.form_submit_button("취소")
+            
+        if cancel_action:
+            st.session_state.action_type = None
+            st.session_state.action_name = None
+            st.rerun()
+            
+        if submit_action:
+            c.execute("SELECT pin FROM bets WHERE name=?", (target_name,))
+            orig_pin = c.fetchone()[0]
+            
+            if input_pin == orig_pin:
+                if st.session_state.action_type == "delete":
+                    c.execute("DELETE FROM bets WHERE name=?", (target_name,))
+                    st.success(f"❌ {target_name}님의 투표가 정상적으로 삭제되었습니다.")
+                elif st.session_state.action_type == "edit":
+                    c.execute("UPDATE bets SET mexico=?, korea=? WHERE name=?", (new_mx, new_kr, target_name))
+                    st.success(f"✅ {target_name}님의 투표가 정상적으로 수정되었습니다.")
+                conn.commit()
+                st.session_state.action_type = None
+                st.session_state.action_name = None
+                st.rerun()
+            else:
+                st.error("❌ 비밀번호가 일치하지 않습니다. 다시 확인해주세요.")
+
+# ------------------------------------------------
+# 📊 현재 생존 현황 (수정/삭제 버튼이 통합된 표형태 UI)
+# ------------------------------------------------
+st.subheader("📊 현재 생존 현황 (수정/삭제 가능)")
+
 df = pd.read_sql("SELECT name, mexico, korea, paid FROM bets", conn)
 
 if not df.empty:
-    # ⏰ 19일 12시 이후에는 정확히 맞춘 사람만 '🎉 당첨!', 나머지는 '☠️ 탈락'
+    # 탈락/당첨 상태 계산 추가
     if is_finished:
-        df['상태'] = df.apply(lambda x: '🎉 당첨!' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '☠️ 탈락', axis=1)
+        df['status_text'] = df.apply(lambda x: '🎉 당첨!' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '☠️ 탈락', axis=1)
     else:
-        df['상태'] = df.apply(lambda x: '☠️ 탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🏃 생존', axis=1)
+        df['status_text'] = df.apply(lambda x: '☠️ 탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🏃 생존', axis=1)
+        
+    # 표 머리글 배치
+    grid_cols = st.columns([2, 1, 1, 1, 1.5, 1, 1])
+    grid_cols[0].markdown("**이름**")
+    grid_cols[1].markdown("**멕시코**")
+    grid_cols[2].markdown("**한국**")
+    grid_cols[3].markdown("**상태**")
+    grid_cols[4].markdown("**입금확인**")
+    grid_cols[5].markdown("**수정**")
+    grid_cols[6].markdown("**삭제**")
+    st.markdown("<hr style='margin:2px 0px 8px 0px;'>", unsafe_allow_html=True)
     
-    df.rename(columns={'name': '이름', 'mexico': '멕시코', 'korea': '한국', 'paid': '입금확인'}, inplace=True)
-    df = df[['이름', '멕시코', '한국', '상태', '입금확인']]
-    st.dataframe(df, use_container_width=True, hide_index=True)
-    
-    # 🏆 [추가 기능] 경기 종료 후 하단에 당첨자 축하 코너 특별 표출
+    # 데이터 행 반복 출력 (오른쪽에 수정/삭제 버튼 부착)
+    for index, row in df.iterrows():
+        r_cols = st.columns([2, 1, 1, 1, 1.5, 1, 1])
+        r_cols[0].write(row['name'])
+        r_cols[1].write(str(row['mexico']))
+        r_cols[2].write(str(row['korea']))
+        r_cols[3].write(row['status_text'])
+        r_cols[4].write(row['paid'])
+        
+        # 각 행마다 고유한 ID(key)를 부여하여 버튼 생성
+        if r_cols[5].button("수정", key=f"edit_{row['name']}", disabled=not is_open):
+            st.session_state.action_type = "edit"
+            st.session_state.action_name = row['name']
+            st.rerun()
+            
+        if r_cols[6].button("삭제", key=f"del_{row['name']}", disabled=not is_open):
+            st.session_state.action_type = "delete"
+            st.session_state.action_name = row['name']
+            st.rerun()
+            
+    # 🏆 경기 종료 후 하단 당첨자 축하 코너
     if is_finished:
-        winners = df[df['상태'] == '🎉 당첨!']['이름'].tolist()
+        winners = df[df['status_text'] == '🎉 당첨!']['name'].tolist()
         st.markdown("---")
         st.subheader("🏆 최종 당첨자 결과")
-        
         if winners:
             winner_text = ", ".join([f"**{w}**님" for w in winners])
-            st.balloons() # 화면 전체에 축하 풍선이 날아다니는 시각 효과!
+            st.balloons()
             st.success(f"🥳 **축하합니다 당첨!** {winner_text} 정말 축하합니다! 예측 성공! 🎁")
         else:
             st.info("😭 아쉽게도 최종 스코어를 정확히 맞춘 사람이 없습니다.")
