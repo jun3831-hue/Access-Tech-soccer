@@ -12,9 +12,7 @@ DB_NAME = 'worldcup.db'
 ADMIN_PW = 'jeon0915'
 ACCOUNT_INFO = '카카오페이 또는 카카오뱅크 3333-10-3569994 전광용'
 
-# 🔑 [필수 입력] API 토큰
 API_KEY = "7a57cc65db3f47e4adea9e1468b053e1"
-
 st_autorefresh(interval=10000, key="score_auto_refresh")
 
 DEADLINE = datetime(2026, 6, 19, 10, 0, 0)
@@ -61,33 +59,20 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (안정화된 CSS)
+# 🎨 화면 UI 시작 (문제 되던 악성 CSS 전면 삭제)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 1. 모바일에서 버튼 크기 축소 */
+    /* 신규 투표 폼 버튼 크기 최적화용 순수 CSS만 남김 */
     @media (max-width: 768px) {
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
             min-height: 32px !important;
         }
-    }
-    
-    /* 2. 현황판에만 적용되는 400px 제한 및 줄바꿈 방지 족쇄 (글자 잘림 악성코드 제거 완료) */
-    div[data-testid="stHorizontalBlock"]:has(.board-row) {
-        max-width: 400px !important;   
-        margin: 0 auto !important;     
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;  
-        align-items: center !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.board-row) > div[data-testid="column"] {
-        min-width: 0px !important;
-        padding: 0px 2px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -130,7 +115,7 @@ with st.form("new_betting_form"):
         else:
             c.execute("SELECT name FROM bets WHERE name=?", (name,))
             if c.fetchone():
-                st.error("❌ 이미 등록된 이름입니다. 기존 내역을 수정하려면 아래 현황판에서 [변경] 버튼을 눌러주세요.")
+                st.error("❌ 이미 등록된 이름입니다. 기존 내역을 수정하려면 아래 현황판에서 관리 체크박스를 눌러주세요.")
             else:
                 c.execute("INSERT INTO bets (name, pin, mexico, korea, paid) VALUES (?, ?, ?, ?, ?)", 
                           (name, pin, mexico_score, korea_score, '❌ 미입금'))
@@ -141,7 +126,7 @@ with st.form("new_betting_form"):
 st.markdown("---")
 
 # ------------------------------------------------
-# 🛠️ 투표 수정/삭제 액션 창
+# 🛠️ 투표 수정/삭제 액션 창 (표 위쪽에 고정)
 # ------------------------------------------------
 if st.session_state.target_name and is_open:
     t_name = st.session_state.target_name
@@ -194,39 +179,54 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 ([4, 1] 비율로 텍스트 공간 확보)
+# 📊 현재 생존 현황 (스트림릿 순정 표 + 체크박스 완벽 적용)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
 df = pd.read_sql("SELECT name, mexico, korea, paid FROM bets", conn)
 
 if not df.empty:
+    # 1. 상태 이모티콘 및 텍스트 매핑
     if is_finished:
-        df['status_text'] = df.apply(lambda x: '당첨' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '탈락', axis=1)
+        df['🚥 상태'] = df.apply(lambda x: '🎉 당첨' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '🔴 탈락', axis=1)
     else:
-        df['status_text'] = df.apply(lambda x: '탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '생존', axis=1)
+        df['🚥 상태'] = df.apply(lambda x: '🔴 탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🟢 생존', axis=1)
     
-    df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
+    # 2. 입금 및 예측 데이터 가공
+    df['입금'] = df['paid'].apply(lambda x: '✅ 완료' if '완료' in x else '❌ 미입금')
+    df['예측'] = df['mexico'].astype(str) + " : " + df['korea'].astype(str)
     
-    # 💡 4:1 비율을 사용하여 1열(텍스트)이 400px 중 320px을 넉넉히 쓰도록 수정 (스크롤 방지)
-    header_cols = st.columns([4, 1])
-    header_cols[0].markdown("<div class='board-row' style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
-    header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
-    st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
+    # 3. 방장님 요청: 머리글 가운데 4칸 띄움
+    df['이    름'] = df['name']
+    df['🛠️ 관리'] = False  # 체크박스 기본값
     
-    for index, row in df.iterrows():
-        # 💡 데이터 줄도 4:1 배분
-        row_cols = st.columns([4, 1])
-        
-        info_string = f"<div class='board-row' style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
-        row_cols[0].markdown(info_string, unsafe_allow_html=True)
-        
-        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
-            st.session_state.target_name = row['name']
+    # 4. 방장님 요청 열 순서 재배치
+    display_df = df[['🚥 상태', '이    름', '예측', '입금', '🛠️ 관리']]
+    
+    # 5. 스트림릿 순정 Data Editor 출력
+    # (key를 가변으로 주어 폼 열고 닫을 때 체크박스 자동 해제되도록 설계)
+    edited_df = st.data_editor(
+        display_df,
+        key=f"data_editor_{st.session_state.target_name}",
+        hide_index=True,
+        use_container_width=True,
+        disabled=["🚥 상태", "이    름", "예측", "입금"], # 관리 열만 조작 가능
+        column_config={
+            "🛠️ 관리": st.column_config.CheckboxColumn("🛠️ 관리", default=False)
+        }
+    )
+    
+    # 6. 체크박스 감지 로직
+    # 관리 열이 True(체크됨)인 행을 찾아서 target_name으로 등록하고 새로고침
+    checked_rows = edited_df[edited_df['🛠️ 관리'] == True]
+    if not checked_rows.empty:
+        selected_name = checked_rows.iloc[0]['이    름']
+        if st.session_state.target_name != selected_name:
+            st.session_state.target_name = selected_name
             st.rerun()
 
     if is_finished:
-        winners = df[df['status_text'] == '당첨']['name'].tolist()
+        winners = df[df['🚥 상태'] == '🎉 당첨']['name'].tolist()
         st.markdown("---")
         st.subheader("🏆 최종 당첨자 결과")
         if winners:
@@ -251,10 +251,10 @@ with st.expander("🔐 방장 전용 관리자 패널"):
         df_admin = pd.read_sql("SELECT name, paid FROM bets", conn)
         df_admin['입금완료 체크'] = df_admin['paid'] == '✅ 완료'
         
-        edited_df = st.data_editor(df_admin[['name', '입금완료 체크']], hide_index=True, use_container_width=True)
+        edited_admin = st.data_editor(df_admin[['name', '입금완료 체크']], hide_index=True, use_container_width=True)
         
         if st.button("입금 상태 일괄 저장"):
-            for index, row in edited_df.iterrows():
+            for index, row in edited_admin.iterrows():
                 new_status = '✅ 완료' if row['입금완료 체크'] else '❌ 미입금'
                 c.execute("UPDATE bets SET paid=? WHERE name=?", (new_status, row['name']))
             conn.commit()
