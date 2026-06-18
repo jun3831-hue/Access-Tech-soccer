@@ -217,13 +217,13 @@ if not df.empty:
         st.markdown('<div id="status-board-limit"></div>', unsafe_allow_html=True)
         
         # 600px 안에서 4:1로 나누므로 거리가 절대 멀어지지 않습니다.
-        header_cols = st.columns([1, 1])
+        header_cols = st.columns([2, 1])
         header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
         header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
         for index, row in df.iterrows():
-            row_cols = st.columns([1, 1])
+            row_cols = st.columns([2, 1])
             
             info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
