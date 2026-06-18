@@ -12,13 +12,9 @@ DB_NAME = 'worldcup.db'
 ADMIN_PW = 'jeon0915'
 ACCOUNT_INFO = '카카오페이 또는 카카오뱅크 3333-10-3569994 전광용'
 
-# 🔑 [필수 입력] API 토큰
 API_KEY = "7a57cc65db3f47e4adea9e1468b053e1"
-
-# 🔄 [자동 새로고침] 10초 주기
 st_autorefresh(interval=10000, key="score_auto_refresh")
 
-# ⏰ [시간 설정] 
 DEADLINE = datetime(2026, 6, 19, 10, 0, 0)
 MATCH_END = datetime(2026, 6, 19, 12, 0, 0)
 
@@ -32,7 +28,6 @@ c.execute('''CREATE TABLE IF NOT EXISTS bets
              (name TEXT PRIMARY KEY, pin TEXT, mexico INT, korea INT, paid TEXT)''')
 conn.commit()
 
-# Session State 초기화
 if "target_name" not in st.session_state:
     st.session_state.target_name = None
 
@@ -43,27 +38,20 @@ if "target_name" not in st.session_state:
 def get_live_score():
     if API_KEY == "여기에_발급받은_토큰을_넣으세요" or not API_KEY:
         return 0, 0
-        
     try:
         url = "https://api.football-data.org/v4/matches"
         headers = {'X-Auth-Token': API_KEY}
         response = requests.get(url, headers=headers).json()
-        
         for match in response.get('matches', []):
             home_team = match['homeTeam']['name'].lower()
             away_team = match['awayTeam']['name'].lower()
-            
             if 'korea' in home_team or 'korea' in away_team:
                 home_score = match['score']['fullTime']['home']
                 away_score = match['score']['fullTime']['away']
-                
                 if home_score is None: home_score = 0
                 if away_score is None: away_score = 0
-                
-                if 'korea' in away_team: 
-                    return int(home_score), int(away_score)
-                else:
-                    return int(away_score), int(home_score)
+                if 'korea' in away_team: return int(home_score), int(away_score)
+                else: return int(away_score), int(home_score)
         return 0, 0
     except:
         return 0, 0
@@ -71,30 +59,41 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작
+# 🎨 화면 UI 시작 & 핵심 CSS 적용
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
-# [핵심] PC는 냅두고 오직 모바일(폭 600px 이하)에서만 현황판 줄바꿈을 강제로 막는 CSS
 st.markdown("""
     <style>
+    /* 📱 모바일 일반 최적화 */
     @media (max-width: 600px) {
-        div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"] {
-            width: auto !important;
-            min-width: 0px !important;
-            padding: 0px 2px !important;
-        }
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
             min-height: 32px !important;
         }
+    }
+    
+    /* 📊 [핵심] 투표 현황판(2번) 전용 CSS: 50:50 비율 파괴 및 텍스트-버튼 밀착 */
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
+        justify-content: flex-start !important; /* 왼쪽으로 바짝 붙임 */
+        gap: 15px !important; /* 텍스트와 버튼 사이의 절대 간격 */
+        flex-wrap: nowrap !important; /* 무조건 한 줄 고정 */
+        align-items: center !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"]:nth-child(1) {
+        width: max-content !important; /* 글자 크기만큼만 폭을 가짐 */
+        flex: 0 0 auto !important; 
+        min-width: 0px !important;
+        padding: 0px !important;
+        white-space: nowrap !important; /* PC/모바일 줄바꿈 원천 차단 */
+    }
+    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"]:nth-child(2) {
+        width: auto !important; /* 버튼 크기만큼만 폭을 가짐 */
+        flex: 0 0 auto !important;
+        min-width: 0px !important;
+        padding: 0px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -109,7 +108,6 @@ elif not is_finished:
 else:
     st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
 
-# [스코어보드 한 줄 통합]
 st.markdown(f"""
     <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
         <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
@@ -117,14 +115,14 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------
-# 🎯 신규 투표하기 폼
+# 🎯 신규 투표하기 폼 (PC 3줄, 폰 자연스러운 4줄 줄바꿈)
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
-    # 3줄 구조 (이름 -> 비번 -> 2열 점수입력)
     name = st.text_input("이름 (본명)", disabled=not is_open)
     pin = st.text_input("비밀번호 4자리", type="password", max_chars=4, disabled=not is_open)
     
+    # 이 부분은 모바일에서 공간 부족시 자연스럽게 위아래로 떨어짐 (스트림릿 기본기능)
     col1, col2 = st.columns(2)
     with col1:
         mexico_score = st.selectbox("멕시코", options=list(range(15)), disabled=not is_open)
@@ -154,7 +152,6 @@ st.markdown("---")
 # ------------------------------------------------
 if st.session_state.target_name and is_open:
     t_name = st.session_state.target_name
-    
     st.warning(f"🛠️ **[{t_name}]님의 투표 관리**")
     st.write("##### 수정하시겠습니까? 삭제하시겠습니까?")
     
@@ -168,10 +165,8 @@ if st.session_state.target_name and is_open:
         if action_type == "수정":
             st.info("새로운 예측 점수를 선택하세요.")
             c1, c2 = st.columns(2)
-            with c1:
-                new_mx = st.selectbox("멕시코", options=list(range(15)))
-            with c2:
-                new_kr = st.selectbox("한국", options=list(range(15)))
+            with c1: new_mx = st.selectbox("멕시코", options=list(range(15)))
+            with c2: new_kr = st.selectbox("한국", options=list(range(15)))
                 
         c_submit, c_cancel = st.columns(2)
         with c_submit:
@@ -186,7 +181,6 @@ if st.session_state.target_name and is_open:
         if confirm_btn:
             c.execute("SELECT pin FROM bets WHERE name=?", (t_name,))
             orig_pin = c.fetchone()[0]
-            
             if input_pin == orig_pin:
                 if action_type == "수정":
                     c.execute("UPDATE bets SET mexico=?, korea=? WHERE name=?", (new_mx, new_kr, t_name))
@@ -203,41 +197,13 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (글자 수 밀착 + 가비지 여백 완전 제거)
+# 📊 현재 생존 현황 (공백 완전 제거 + 밀착 정렬)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
-
-# 💡 [핵심 CSS] 1열이 여백을 먹지 않고 글자 크기만큼만 딱 달라붙게 만듭니다.
-st.markdown("""
-    <style>
-    /* 현황판 구역의 가로 정렬 및 간격 고정 */
-    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
-        gap: 10px !important; /* 텍스트와 버튼 사이의 딱 보기 좋은 최소 간격 */
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-    }
-    
-    /* 1열: 내용물(글자) 크기만큼만 넓이 차지, 절대 줄바꿈 금지 */
-    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"]:nth-child(1) {
-        width: max-content !important;
-        flex: 0 0 auto !important; 
-        min-width: 0px !important;
-        padding: 0px !important;
-        white-space: nowrap !important; /* PC 줄바꿈 원천 차단 */
-    }
-    
-    /* 2열(버튼): 1열 바로 옆에 밀착 */
-    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"]:nth-child(2) {
-        min-width: 0px !important;
-        padding: 0px !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
 df = pd.read_sql("SELECT name, mexico, korea, paid FROM bets", conn)
 
 if not df.empty:
-    # 이모티콘 제거
     if is_finished:
         df['status_text'] = df.apply(lambda x: '당첨' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '탈락', axis=1)
     else:
@@ -245,15 +211,14 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 이 구역에만 정밀 타겟팅되도록 마커 삽입
     with st.container():
+        # CSS 타겟팅용 마커
         st.markdown('<div class="status-board-marker"></div>', unsafe_allow_html=True)
         
-        # CSS가 1열과 2열의 크기를 통제하므로 비율 설정 없이 2칸으로만 나눔
+        # 50:50 분할은 위쪽 CSS가 무시하므로 형식상 2칸으로만 선언
         header_cols = st.columns(2)
-        
-        # [수정] 방장님 요청: '이' 앞 한칸, '름' 뒤 한칸 추가 (반각 스페이스로 밸런스 조절)
-        header_string = "<div style='font-size: 15px;'><b>&nbsp;이&nbsp;&nbsp;&nbsp;&nbsp;름&nbsp; &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예&nbsp;측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>"
+        # 띄어쓰기 롤백 반영
+        header_string = "<div style='font-size: 15px;'><b>이&nbsp;&nbsp;&nbsp;&nbsp;름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예&nbsp;측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>"
         header_cols[0].markdown(header_string, unsafe_allow_html=True)
         header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
@@ -261,7 +226,7 @@ if not df.empty:
         for index, row in df.iterrows():
             row_cols = st.columns(2)
             
-            # [수정] 3글자 사이 띄어쓰기 완전 제거 (원본 이름 그대로 유지), PC 줄바꿈 방지 적용
+            # 3글자 강제 띄어쓰기 롤백 (원본 이름 출력)
             info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
             
@@ -289,14 +254,11 @@ st.markdown("---")
 # ------------------------------------------------
 with st.expander("🔐 방장 전용 관리자 패널"):
     admin_input = st.text_input("관리자 비밀번호", type="password")
-    
     if admin_input == ADMIN_PW:
         st.write("### 💰 입금 확인 관리")
         df_admin = pd.read_sql("SELECT name, paid FROM bets", conn)
         df_admin['입금완료 체크'] = df_admin['paid'] == '✅ 완료'
-        
         edited_df = st.data_editor(df_admin[['name', '입금완료 체크']], hide_index=True, use_container_width=True)
-        
         if st.button("입금 상태 일괄 저장"):
             for index, row in edited_df.iterrows():
                 new_status = '✅ 완료' if row['입금완료 체크'] else '❌ 미입금'
@@ -304,7 +266,6 @@ with st.expander("🔐 방장 전용 관리자 패널"):
             conn.commit()
             st.success("입금 상태가 업데이트되었습니다!")
             st.rerun()
-            
         st.markdown("---")
         st.write("### 💾 서버 데이터 백업")
         csv_data = df_admin[['name', 'paid']].to_csv(index=False).encode('utf-8-sig')
