@@ -181,22 +181,21 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (HEAD Column 유지 + 우측 정돈 구조)
+# 📊 현재 생존 현황 (파이프 추가 + 1줄 강제 고정 완벽 대응)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
-# 💡 [하단 현황 전용 CSS] 투표 현황판 영역만 콕 집어서 줄바꿈을 방지하고 여백을 오밀조밀하게 조절합니다.
+# 💡 [핵심 CSS] 위쪽 투표폼은 내버려두고, 오직 '현재 투표 현황' 쪽만 줄바꿈을 원천 차단하는 정밀 타겟팅 CSS
 st.markdown("""
     <style>
-    .live-status-container div[data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
+    /* st-marker가 있는 구역(현황판) 안의 칸(column)들은 모바일에서도 절대 밑으로 떨어지지 않음 */
+    div[data-testid="stVerticalBlock"]:has(.st-marker) div[data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
         align-items: center !important;
-        gap: 0px !important;
     }
-    .live-status-container div[data-testid="column"] {
+    div[data-testid="stVerticalBlock"]:has(.st-marker) div[data-testid="column"] {
         min-width: 0px !important;
-        padding: 0px 4px !important;
+        padding: 0px 5px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -211,29 +210,27 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 🎯 [요구사항 반영] 현황판 전용 컨테이너를 생성하여 내부 요소만 CSS 타겟팅
-    with st.container(key="live_status_board"):
-        st.markdown('<div class="live-status-container">', unsafe_allow_html=True)
+    # 🎯 현황판 영역을 하나로 묶고 CSS가 추적할 수 있게 마커(.st-marker)를 달아줍니다.
+    with st.container():
+        st.markdown('<div class="st-marker"></div>', unsafe_allow_html=True)
         
-        # 👑 [요구사항 반영] 시원하게 정돈된 HEAD Column(머리글) 유지
-        header_cols = st.columns([4, 1])
-        header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+        # [수정] 텍스트 끝부분에 '관리'와 구분되는 파이프(|) 추가
+        header_cols = st.columns([5, 1])
+        header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금 &nbsp;&nbsp;&nbsp;|</b></div>", unsafe_allow_html=True)
         header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
-        st.markdown("<hr style='margin:4px 0px 12px 0px;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
-        # 데이터 행 출력
         for index, row in df.iterrows():
-            row_cols = st.columns([4, 1])
+            row_cols = st.columns([5, 1])
             
-            info_string = f"<div style='font-size: 16px; padding-top: 4px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']}</div>"
+            # [수정] 데이터 끝부분에도 파이프(|) 추가
+            info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']} &nbsp;&nbsp;&nbsp;|</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
             
-            # ❌ 버튼 팽창 옵션(use_container_width)을 완전히 제거하여 한 줄 고정 및 소형화 달성
+            # 아담한 사이즈를 유지하며 절대 밑으로 내려가지 않는 버튼
             if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
                 st.session_state.target_name = row['name']
                 st.rerun()
-                
-        st.markdown('</div>', unsafe_allow_html=True)
 
     if is_finished:
         winners = df[df['status_text'] == '🎉당첨']['name'].tolist()
