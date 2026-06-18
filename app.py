@@ -79,7 +79,7 @@ st.markdown("""
     
     /* 2. 🚨 [핵심] 현황판 표 크기를 600px로 제한하고 가운데 정렬 */
     div[data-testid="stVerticalBlock"]:has(#status-board-limit) {
-        max-width: 600px !important;
+        max-width: 400px !important;
         margin: 0 auto !important; /* PC 화면에서 중앙 정렬 */
     }
     
