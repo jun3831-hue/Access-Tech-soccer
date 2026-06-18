@@ -15,10 +15,8 @@ ACCOUNT_INFO = '카카오페이 또는 카카오뱅크 3333-10-3569994 전광용
 # 🔑 [필수 입력] API 토큰
 API_KEY = "7a57cc65db3f47e4adea9e1468b053e1"
 
-# 🔄 [자동 새로고침] 10초 주기
 st_autorefresh(interval=10000, key="score_auto_refresh")
 
-# ⏰ [시간 설정] 
 DEADLINE = datetime(2026, 6, 19, 10, 0, 0)
 MATCH_END = datetime(2026, 6, 19, 12, 0, 0)
 
@@ -32,7 +30,6 @@ c.execute('''CREATE TABLE IF NOT EXISTS bets
              (name TEXT PRIMARY KEY, pin TEXT, mexico INT, korea INT, paid TEXT)''')
 conn.commit()
 
-# Session State 초기화
 if "target_name" not in st.session_state:
     st.session_state.target_name = None
 
@@ -43,27 +40,20 @@ if "target_name" not in st.session_state:
 def get_live_score():
     if API_KEY == "여기에_발급받은_토큰을_넣으세요" or not API_KEY:
         return 0, 0
-        
     try:
         url = "https://api.football-data.org/v4/matches"
         headers = {'X-Auth-Token': API_KEY}
         response = requests.get(url, headers=headers).json()
-        
         for match in response.get('matches', []):
             home_team = match['homeTeam']['name'].lower()
             away_team = match['awayTeam']['name'].lower()
-            
             if 'korea' in home_team or 'korea' in away_team:
                 home_score = match['score']['fullTime']['home']
                 away_score = match['score']['fullTime']['away']
-                
                 if home_score is None: home_score = 0
                 if away_score is None: away_score = 0
-                
-                if 'korea' in away_team: 
-                    return int(home_score), int(away_score)
-                else:
-                    return int(away_score), int(home_score)
+                if 'korea' in away_team: return int(home_score), int(away_score)
+                else: return int(away_score), int(home_score)
         return 0, 0
     except:
         return 0, 0
@@ -71,14 +61,14 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작
+# 🎨 화면 UI 시작 (방장님 아이디어: 표 크기 한정 CSS)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 1. 모바일에서 버튼 앙증맞게 줄이기 */
+    /* 1. 모바일에서 버튼 크기 축소 */
     @media (max-width: 768px) {
         .stButton > button {
             padding: 0px 5px !important;
@@ -87,21 +77,43 @@ st.markdown("""
         }
     }
     
-    /* 2. 🚨 [핵심] 'nowrap-row' 이름표가 붙은 가로줄(Row)만 콕 집어서 줄바꿈 절대 금지! (투표 폼에는 영향 X) */
-    div[data-testid="stHorizontalBlock"]:has(.nowrap-row) {
+    /* 2. 🚨 [핵심] 현황판 표 크기를 600px로 제한하고 가운데 정렬 */
+    div[data-testid="stVerticalBlock"]:has(#status-board-limit) {
+        max-width: 600px !important;
+        margin: 0 auto !important; /* PC 화면에서 중앙 정렬 */
+    }
+    
+    /* 3. 현황판 내부의 줄바꿈을 절대 금지 (모바일용 안전벨트) */
+    div[data-testid="stVerticalBlock"]:has(#status-board-limit) div[data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(.nowrap-row) > div[data-testid="column"] {
+    div[data-testid="stVerticalBlock"]:has(#status-board-limit) div[data-testid="column"] {
         min-width: 0px !important;
         padding: 0px 2px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
+if is_open:
+    time_left = DEADLINE - now_kst
+    hours, remainder = divmod(time_left.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    st.success(f"⏳ 마감까지 **{time_left.days}일 {hours}시간 {minutes}분** 남았습니다. (오전 10시 마감)")
+elif not is_finished:
+    st.warning("🏃 **투표가 마감되었습니다!** 경기가 진행 중입니다.")
+else:
+    st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
+
+st.markdown(f"""
+    <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
+        <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
+    </div>
+""", unsafe_allow_html=True)
+
 # ------------------------------------------------
-# 🎯 신규 투표하기 폼 (스트림릿 순정: 폰에서는 알아서 4줄 됨)
+# 🎯 신규 투표하기 폼 (스트림릿 순정 반응형)
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
@@ -186,7 +198,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (줄바꿈 방지 클래스 개별 삽입)
+# 📊 현재 생존 현황 (최대 너비 600px 고정 블록)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -200,24 +212,25 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 4:1 비율 유지
-    header_cols = st.columns([1, 1])
-    
-    # [수정] <div> 안에 class='nowrap-row' 삽입하여 CSS 정밀 타겟팅
-    header_cols[0].markdown("<div class='nowrap-row' style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
-    header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
-    st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
-    
-    for index, row in df.iterrows():
-        row_cols = st.columns([1, 1])
+    # 💡 [핵심] 컨테이너로 감싸고 마커를 달아서, 이 안의 내용물만 600px를 넘지 못하게 가둡니다.
+    with st.container():
+        st.markdown('<div id="status-board-limit"></div>', unsafe_allow_html=True)
         
-        # [수정] 데이터 행에도 class='nowrap-row' 삽입
-        info_string = f"<div class='nowrap-row' style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
-        row_cols[0].markdown(info_string, unsafe_allow_html=True)
+        # 600px 안에서 4:1로 나누므로 거리가 절대 멀어지지 않습니다.
+        header_cols = st.columns([4, 1])
+        header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+        header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
-        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
-            st.session_state.target_name = row['name']
-            st.rerun()
+        for index, row in df.iterrows():
+            row_cols = st.columns([4, 1])
+            
+            info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
+            row_cols[0].markdown(info_string, unsafe_allow_html=True)
+            
+            if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
+                st.session_state.target_name = row['name']
+                st.rerun()
 
     if is_finished:
         winners = df[df['status_text'] == '당첨']['name'].tolist()
