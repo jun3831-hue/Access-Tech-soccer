@@ -102,7 +102,7 @@ with st.form("new_betting_form"):
     col_user1, col_user2 = st.columns(2)
     with col_user1:
         name = st.text_input("이름 (본명)", disabled=not is_open)
-    with col2:
+    with col_user2: # <--- [수정 완료] col2라는 오타를 col_user2로 고쳤습니다!
         pin = st.text_input("비밀번호 4자리", type="password", max_chars=4, disabled=not is_open)
         
     # 두 번째 줄 (멕시코 예상 / 한국 예상)
