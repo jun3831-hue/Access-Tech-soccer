@@ -79,7 +79,7 @@ st.markdown("""
     
     /* 2. 🚨 [핵심] 'board-row' 이름표가 있는 가로줄(stHorizontalBlock)만 콕 집어서 조작! (투표 폼은 간섭 X) */
     div[data-testid="stHorizontalBlock"]:has(.board-row) {
-        max-width: 400px !important;   /* 방장님 세팅: 400px 제한 */
+        max-width: 800px !important;   /* 방장님 세팅: 400px 제한 */
         margin: 0 auto !important;     /* PC에서 정중앙 배치 */
         flex-direction: row !important;
         flex-wrap: nowrap !important;  /* 줄바꿈 절대 방지 */
