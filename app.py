@@ -73,11 +73,29 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 📱 해상도별 자동 글자 크기 조절 (미디어 쿼리 CSS)
+# 📱 1번 방식 핵심: 모바일 해상도 고정 및 표 영역 가로 스크롤 CSS
 # ------------------------------------------------
 st.markdown("""
     <style>
-    /* 기본 정렬 유지 및 줄바꿈 방지 */
+    /* 1. 메인 앱 화면 전체가 가로로 억지로 늘어나는 브라우저 버그 현상 차단 */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"] {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* 2. 테두리가 있는 컨테이너(표 구역) 내부만 독점적으로 가로 스크롤 활성화 */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        overflow-x: auto !important;
+        max-width: 100% !important;
+        -webkit-overflow-scrolling: touch; /* 모바일 부드러운 스크롤 */
+    }
+    
+    /* 3. 표 안의 콘텐트 가로 너비를 750px로 강제 고정하여 컬럼 정렬 유지 */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div > div {
+        min-width: 750px !important;
+    }
+    
+    /* 4. 가로 고정 정렬 유지 및 가독성 확보 */
     div[data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -85,15 +103,8 @@ st.markdown("""
     }
     div[data-testid="column"] {
         min-width: 0px !important;
-        padding: 0px 2px !important;
+        padding: 0px 4px !important;
     }
-    div[data-testid="stMarkdownContainer"] p {
-        white-space: nowrap !important;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* 🖥️ PC 환경 (기본 크기) */
     .stButton > button {
         width: 100% !important;
         padding: 4px !important;
@@ -102,20 +113,6 @@ st.markdown("""
     p, div {
         font-size: 14px !important;
     }
-
-    /* 📱 모바일 환경 (화면 너비 600px 이하일 때 극단적으로 축소) */
-    @media (max-width: 600px) {
-        p, div {
-            font-size: 10px !important; /* 글자 크기를 10px로 축소 */
-        }
-        .stButton > button {
-            width: 100% !important;
-            padding: 1px 0px !important;
-            font-size: 9px !important; /* 버튼 글자 크기를 9px로 축소 */
-            min-height: 22px !important;
-            height: 22px !important;
-        }
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -123,7 +120,7 @@ st.markdown("""
 # 🎨 화면 UI 시작
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 맞추기 내기!")
-st.info(f"💸 **참가비 입금 계좌:** {ACCOUNT_INFO}")
+st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 # 마감 상태 메시지
 if is_open:
@@ -231,7 +228,7 @@ if st.session_state.action_type and is_open:
                 st.error("❌ 비밀번호가 일치하지 않습니다.")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (해상도 대응 7열 원복 구조)
+# 📊 현재 생존 현황 (가로 스크롤 컨테이너 적용 구역)
 # ------------------------------------------------
 st.subheader("📊 현재 생존 현황 (수정/삭제 가능)")
 
@@ -243,34 +240,35 @@ if not df.empty:
     else:
         df['status_text'] = df.apply(lambda x: '☠️탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🏃생존', axis=1)
         
-    # 7개 열의 가로 너비 비율을 글자 길이에 맞춰 타이트하게 미세 조정
-    grid_cols = st.columns([1.8, 1.1, 1.1, 1.1, 1.4, 0.9, 0.9])
-    grid_cols[0].markdown("**이름**")
-    grid_cols[1].markdown("**멕시코**")
-    grid_cols[2].markdown("**한국**")
-    grid_cols[3].markdown("**상태**")
-    grid_cols[4].markdown("**입금**")
-    grid_cols[5].markdown("**수정**")
-    grid_cols[6].markdown("**삭제**")
-    st.markdown("<hr style='margin:2px 0px 6px 0px;'>", unsafe_allow_html=True)
-    
-    for index, row in df.iterrows():
-        r_cols = st.columns([1.8, 1.1, 1.1, 1.1, 1.4, 0.9, 0.9])
-        r_cols[0].write(row['name'])
-        r_cols[1].write(str(row['mexico']))
-        r_cols[2].write(str(row['korea']))
-        r_cols[3].write(row['status_text'])
-        r_cols[4].write(row['paid'])
+    # border=True를 주어 CSS가 이 영역만 타겟팅하여 가로 스크롤바를 띄우도록 유도합니다.
+    with st.container(border=True):
+        grid_cols = st.columns([1.6, 1.1, 1.1, 1.1, 1.4, 0.9, 0.9])
+        grid_cols[0].markdown("**이름**")
+        grid_cols[1].markdown("**멕시코**")
+        grid_cols[2].markdown("**한국**")
+        grid_cols[3].markdown("**상태**")
+        grid_cols[4].markdown("**입금확인**")
+        grid_cols[5].markdown("**수정**")
+        grid_cols[6].markdown("**삭제**")
+        st.markdown("<hr style='margin:2px 0px 6px 0px;'>", unsafe_allow_html=True)
         
-        if r_cols[5].button("수정", key=f"edit_{row['name']}", disabled=not is_open):
-            st.session_state.action_type = "edit"
-            st.session_state.action_name = row['name']
-            st.rerun()
+        for index, row in df.iterrows():
+            r_cols = st.columns([1.6, 1.1, 1.1, 1.1, 1.4, 0.9, 0.9])
+            r_cols[0].write(row['name'])
+            r_cols[1].write(str(row['mexico']))
+            r_cols[2].write(str(row['korea']))
+            r_cols[3].write(row['status_text'])
+            r_cols[4].write(row['paid'])
             
-        if r_cols[6].button("삭제", key=f"del_{row['name']}", disabled=not is_open):
-            st.session_state.action_type = "delete"
-            st.session_state.action_name = row['name']
-            st.rerun()
+            if r_cols[5].button("수정", key=f"edit_{row['name']}", disabled=not is_open):
+                st.session_state.action_type = "edit"
+                st.session_state.action_name = row['name']
+                st.rerun()
+                
+            if r_cols[6].button("삭제", key=f"del_{row['name']}", disabled=not is_open):
+                st.session_state.action_type = "delete"
+                st.session_state.action_name = row['name']
+                st.rerun()
             
     if is_finished:
         winners = df[df['status_text'] == '🎉당첨']['name'].tolist()
@@ -279,7 +277,7 @@ if not df.empty:
         if winners:
             winner_text = ", ".join([f"**{w}**님" for w in winners])
             st.balloons()
-            st.success(f"🥳 **축하합니다 당첨!** {winner_text} 정말 축하합니다! 예측 성공! 🎁")
+            st.success(f"🥳 **사내 건전 집단지성 프로젝트 성공!** {winner_text} 정확히 맞추셨습니다! 축하합니다! 🎁")
         else:
             st.info("😭 아쉽게도 최종 스코어를 정확히 맞춘 사람이 없습니다.")
 else:
