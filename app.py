@@ -71,18 +71,29 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (꼼수 CSS 완전 제거, 모바일 폰트 최적화만 유지)
+# 🎨 화면 UI 시작 (모바일 전용 안전벨트 CSS)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
+    /* 📱 오직 모바일(화면 600px 이하)에서만 작동하는 CSS */
     @media (max-width: 600px) {
         .stButton > button {
             padding: 0px 5px !important;
             font-size: 13px !important;
             min-height: 32px !important;
+        }
+        
+        /* 🚨 [핵심] 현황판(마커 있는 곳)의 칸들이 모바일에서 밑으로 떨어지는 본능을 강제로 막음 */
+        div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"] {
+            min-width: 0px !important;
+            padding: 0px 2px !important;
         }
     }
     </style>
@@ -105,14 +116,13 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------
-# 🎯 신규 투표하기 폼 (스트림릿 순정 반응형 완벽 작동)
+# 🎯 신규 투표하기 폼 (스트림릿 순정: 폰에서는 알아서 4줄 됨)
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
     name = st.text_input("이름 (본명)", disabled=not is_open)
     pin = st.text_input("비밀번호 4자리", type="password", max_chars=4, disabled=not is_open)
     
-    # 순정 상태이므로 PC에서는 나란히, 모바일에서는 알아서 세로로 줄바꿈됩니다.
     col1, col2 = st.columns(2)
     with col1:
         mexico_score = st.selectbox("멕시코", options=list(range(15)), disabled=not is_open)
@@ -191,7 +201,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (A안: 스트림릿 순정 모드 + 2:1 비율 적용)
+# 📊 현재 생존 현황 (PC: 순정 레이아웃 / 모바일: 한 줄 고정)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -205,21 +215,25 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 방장님 지정 3:1 비율 적용
-    header_cols = st.columns([5, 1])
-    header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
-    header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
-    st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
-    
-    for index, row in df.iterrows():
-        row_cols = st.columns([5, 1])
+    with st.container():
+        # CSS가 이 구역만 콕 집어서 적용되도록 마커 달기
+        st.markdown('<div class="status-board-marker"></div>', unsafe_allow_html=True)
         
-        info_string = f"<div style='font-size: 15px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
-        row_cols[0].markdown(info_string, unsafe_allow_html=True)
+        # 가장 안정적이었던 4:1 비율로 원복
+        header_cols = st.columns([2, 1])
+        header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+        header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
-        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
-            st.session_state.target_name = row['name']
-            st.rerun()
+        for index, row in df.iterrows():
+            row_cols = st.columns([2, 1])
+            
+            info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
+            row_cols[0].markdown(info_string, unsafe_allow_html=True)
+            
+            if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
+                st.session_state.target_name = row['name']
+                st.rerun()
 
     if is_finished:
         winners = df[df['status_text'] == '당첨']['name'].tolist()
