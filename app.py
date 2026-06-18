@@ -181,21 +181,27 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (파이프 추가 + 1줄 강제 고정 완벽 대응)
+# 📊 현재 생존 현황 (간격 0 + 모두 가운데 정렬 완벽 적용)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
-# 💡 [핵심 CSS] 위쪽 투표폼은 내버려두고, 오직 '현재 투표 현황' 쪽만 줄바꿈을 원천 차단하는 정밀 타겟팅 CSS
+# 💡 [핵심 CSS] 열 사이의 간격과 여백을 0으로 뭉개고, 버튼을 중앙으로 정렬
 st.markdown("""
     <style>
-    /* st-marker가 있는 구역(현황판) 안의 칸(column)들은 모바일에서도 절대 밑으로 떨어지지 않음 */
     div[data-testid="stVerticalBlock"]:has(.st-marker) div[data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
         align-items: center !important;
+        justify-content: center !important;
+        gap: 0px !important; /* 🌟 1열과 2열 사이의 틈새 완전 제거 */
     }
     div[data-testid="stVerticalBlock"]:has(.st-marker) div[data-testid="column"] {
         min-width: 0px !important;
-        padding: 0px 5px !important;
+        padding: 0px !important; /* 🌟 열 안쪽의 보이지 않는 여백(패딩) 완전 제거 */
+    }
+    /* 2열의 버튼 컴포넌트 자체를 자기 칸의 정중앙으로 밀어넣기 */
+    div[data-testid="stVerticalBlock"]:has(.st-marker) .stButton {
+        display: flex;
+        justify-content: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -210,24 +216,26 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # 🎯 현황판 영역을 하나로 묶고 CSS가 추적할 수 있게 마커(.st-marker)를 달아줍니다.
     with st.container():
         st.markdown('<div class="st-marker"></div>', unsafe_allow_html=True)
         
-        # [수정] 텍스트 끝부분에 '관리'와 구분되는 파이프(|) 추가
-        header_cols = st.columns([5, 1])
-        header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금 &nbsp;&nbsp;&nbsp;|</b></div>", unsafe_allow_html=True)
+        # [비율 조정] 버튼을 텍스트 쪽으로 바짝 당기기 위해 6:1로 변경
+        header_cols = st.columns([6, 1])
+        
+        # [정렬] 1열 머리글 가운데 정렬 (text-align: center)
+        header_cols[0].markdown("<div style='font-size: 15px; text-align: center;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금 &nbsp;&nbsp;&nbsp;|</b></div>", unsafe_allow_html=True)
+        # [정렬] 2열 머리글 가운데 정렬
         header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
         
         for index, row in df.iterrows():
-            row_cols = st.columns([5, 1])
+            row_cols = st.columns([6, 1])
             
-            # [수정] 데이터 끝부분에도 파이프(|) 추가
-            info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']} &nbsp;&nbsp;&nbsp;|</div>"
+            # [정렬] 1열 텍스트 덩어리 전체를 가운데 정렬 (text-align: center)
+            info_string = f"<div style='font-size: 16px; padding-top: 5px; text-align: center;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']} &nbsp;&nbsp;&nbsp;|</div>"
             row_cols[0].markdown(info_string, unsafe_allow_html=True)
             
-            # 아담한 사이즈를 유지하며 절대 밑으로 내려가지 않는 버튼
+            # 버튼은 위쪽 CSS의 Flexbox 효과를 받아 정중앙에 위치하게 됨
             if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
                 st.session_state.target_name = row['name']
                 st.rerun()
