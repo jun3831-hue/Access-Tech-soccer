@@ -71,14 +71,14 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (해상도 조건 완전히 삭제한 절대 1줄 고정)
+# 🎨 화면 UI 시작
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
     <style>
-    /* 1. 버튼 크기만 모바일/태블릿(768px 이하)에서 작아지게 설정 */
+    /* 1. 모바일에서 버튼 앙증맞게 줄이기 */
     @media (max-width: 768px) {
         .stButton > button {
             padding: 0px 5px !important;
@@ -87,13 +87,13 @@ st.markdown("""
         }
     }
     
-    /* 2. 🚨 [핵심] 해상도(PC/모바일) 상관없이 마커가 있는 현황판은 무조건 가로 1줄 고정! */
-    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="stHorizontalBlock"] {
+    /* 2. 🚨 [핵심] 'nowrap-row' 이름표가 붙은 가로줄(Row)만 콕 집어서 줄바꿈 절대 금지! (투표 폼에는 영향 X) */
+    div[data-testid="stHorizontalBlock"]:has(.nowrap-row) {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
     }
-    div[data-testid="stVerticalBlock"]:has(.status-board-marker) div[data-testid="column"] {
+    div[data-testid="stHorizontalBlock"]:has(.nowrap-row) > div[data-testid="column"] {
         min-width: 0px !important;
         padding: 0px 2px !important;
     }
@@ -186,7 +186,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (PC: 순정 레이아웃 / 모바일: 한 줄 고정)
+# 📊 현재 생존 현황 (줄바꿈 방지 클래스 개별 삽입)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -200,25 +200,24 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    with st.container():
-        # CSS가 이 구역만 콕 집어서 적용되도록 마커 달기
-        st.markdown('<div class="status-board-marker"></div>', unsafe_allow_html=True)
+    # 4:1 비율 유지
+    header_cols = st.columns([4, 1])
+    
+    # [수정] <div> 안에 class='nowrap-row' 삽입하여 CSS 정밀 타겟팅
+    header_cols[0].markdown("<div class='nowrap-row' style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+    header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
+    
+    for index, row in df.iterrows():
+        row_cols = st.columns([4, 1])
         
-        # 가장 안정적이었던 4:1 비율로 원복
-        header_cols = st.columns([1, 1])
-        header_cols[0].markdown("<div style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
-        header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
-        st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
+        # [수정] 데이터 행에도 class='nowrap-row' 삽입
+        info_string = f"<div class='nowrap-row' style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
+        row_cols[0].markdown(info_string, unsafe_allow_html=True)
         
-        for index, row in df.iterrows():
-            row_cols = st.columns([1, 1])
-            
-            info_string = f"<div style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
-            row_cols[0].markdown(info_string, unsafe_allow_html=True)
-            
-            if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
-                st.session_state.target_name = row['name']
-                st.rerun()
+        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open):
+            st.session_state.target_name = row['name']
+            st.rerun()
 
     if is_finished:
         winners = df[df['status_text'] == '당첨']['name'].tolist()
