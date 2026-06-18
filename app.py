@@ -183,7 +183,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황
+# 📊 현재 생존 현황 (안정적인 파이프(|) 2열 구조 원복)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -197,24 +197,22 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
+    # 4:1 비율로 나누고 머리글 작성
+    header_cols = st.columns([4, 1])
+    header_cols[0].markdown("<div style='font-size: 15px;'><b>이름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
+    header_cols[1].markdown("<div style='font-size: 15px;'><b>관리</b></div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
+    
     for index, row in df.iterrows():
-        # 각 사람의 데이터를 네모난 테두리(Box) 안에 넣어서 앱 UI처럼 분리
-        with st.container(border=True):
-            row_cols = st.columns([3, 1], vertical_alignment="center")
-            
-            # [핵심] 양끝으로 밀어내지 않고(flex-start), 글자 간격(gap)을 20px로 시원하게 벌려서 정렬
-            info_html = f"""
-            <div style='display: flex; gap: 20px; align-items: center; padding-left: 5px;'>
-                <span style='font-size: 16px; font-weight: bold;'>{row['name']}</span>
-                <span style='font-size: 16px; color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span>
-                <span style='font-size: 14px; color: #555;'>{row['status_text']} / {row['paid_mark']}</span>
-            </div>
-            """
-            row_cols[0].markdown(info_html, unsafe_allow_html=True)
-            
-            if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open, use_container_width=True):
-                st.session_state.target_name = row['name']
-                st.rerun()
+        row_cols = st.columns([4, 1])
+        
+        # [핵심] 기존의 가장 안정적이었던 텍스트 결합 방식 + 폰트 크기 16px + 띄어쓰기 간격 확장
+        info_string = f"<div style='font-size: 16px; padding-top: 5px;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']} / {row['paid_mark']}</div>"
+        row_cols[0].markdown(info_string, unsafe_allow_html=True)
+        
+        if row_cols[1].button("변경", key=f"btn_{row['name']}", disabled=not is_open, use_container_width=True):
+            st.session_state.target_name = row['name']
+            st.rerun()
 
     if is_finished:
         winners = df[df['status_text'] == '🎉당첨']['name'].tolist()
