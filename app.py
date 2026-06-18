@@ -201,7 +201,7 @@ if not df.empty:
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
     # 4:1 비율 유지
-    header_cols = st.columns([4, 1])
+    header_cols = st.columns([1, 1])
     
     # [수정] <div> 안에 class='nowrap-row' 삽입하여 CSS 정밀 타겟팅
     header_cols[0].markdown("<div class='nowrap-row' style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
@@ -209,7 +209,7 @@ if not df.empty:
     st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
     
     for index, row in df.iterrows():
-        row_cols = st.columns([4, 1])
+        row_cols = st.columns([1, 1])
         
         # [수정] 데이터 행에도 class='nowrap-row' 삽입
         info_string = f"<div class='nowrap-row' style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
