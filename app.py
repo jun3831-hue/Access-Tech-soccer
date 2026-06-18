@@ -61,7 +61,7 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (유령 여백 제거 및 스크롤 방지 CSS)
+# 🎨 화면 UI 시작 (안정화된 CSS)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
@@ -77,21 +77,14 @@ st.markdown("""
         }
     }
     
-    /* 2. 🚨 [핵심] 보이지 않는 유령 공간과 틈새(Gap)를 없애서 가로 스크롤 원천 차단 */
+    /* 2. 현황판에만 적용되는 400px 제한 및 줄바꿈 방지 족쇄 (글자 잘림 악성코드 제거 완료) */
     div[data-testid="stHorizontalBlock"]:has(.board-row) {
-        max-width: 400px !important;       /* PC에서는 방장님 세팅(400px) 유지 */
-        width: 100% !important;            /* 모바일 화면을 넘어가지 않게 100% 족쇄 */
-        margin: 0 auto !important;         /* 정중앙 정렬 */
+        max-width: 400px !important;   
+        margin: 0 auto !important;     
         flex-direction: row !important;
-        flex-wrap: nowrap !important;      /* 줄바꿈 방지 */
+        flex-wrap: nowrap !important;  
         align-items: center !important;
-        
-        /* 👇 여기에 3줄이 추가되었습니다 👇 */
-        gap: 0px !important;               /* 스트림릿의 기본 투명 틈새 0으로 압축 */
-        box-sizing: border-box !important; /* 패딩 때문에 화면 밖으로 밀리는 현상 방지 */
-        overflow: hidden !important;       /* 그럼에도 삐져나가는 1px 껍데기 절단 */
     }
-    
     div[data-testid="stHorizontalBlock"]:has(.board-row) > div[data-testid="column"] {
         min-width: 0px !important;
         padding: 0px 2px !important;
@@ -99,8 +92,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+if is_open:
+    time_left = DEADLINE - now_kst
+    hours, remainder = divmod(time_left.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    st.success(f"⏳ 마감까지 **{time_left.days}일 {hours}시간 {minutes}분** 남았습니다. (오전 10시 마감)")
+elif not is_finished:
+    st.warning("🏃 **투표가 마감되었습니다!** 경기가 진행 중입니다.")
+else:
+    st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
+
+st.markdown(f"""
+    <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
+        <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
+    </div>
+""", unsafe_allow_html=True)
+
 # ------------------------------------------------
-# 🎯 신규 투표하기 폼 (이제 간섭 안 받음 -> 모바일 반응형 정상 작동)
+# 🎯 신규 투표하기 폼
 # ------------------------------------------------
 st.subheader("🎯 신규 투표하기")
 with st.form("new_betting_form"):
@@ -185,7 +194,7 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (방장님 세팅: 400px 제한 & 3:2 비율)
+# 📊 현재 생존 현황 ([4, 1] 비율로 텍스트 공간 확보)
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
@@ -199,18 +208,16 @@ if not df.empty:
     
     df['paid_mark'] = df['paid'].apply(lambda x: '완료' if '완료' in x else '미입금')
     
-    # [방장님 세팅] 3:2 비율 적용
-    header_cols = st.columns([3, 2])
-    # [수정] class='board-row' 삽입 -> CSS가 이 줄만 타겟팅함!
+    # 💡 4:1 비율을 사용하여 1열(텍스트)이 400px 중 320px을 넉넉히 쓰도록 수정 (스크롤 방지)
+    header_cols = st.columns([4, 1])
     header_cols[0].markdown("<div class='board-row' style='font-size: 15px;'><b>이 름 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 예측 &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; 상태/입금</b></div>", unsafe_allow_html=True)
     header_cols[1].markdown("<div style='font-size: 15px; text-align: center;'><b>관리</b></div>", unsafe_allow_html=True)
     st.markdown("<hr style='margin:2px 0px 10px 0px;'>", unsafe_allow_html=True)
     
     for index, row in df.iterrows():
-        # [방장님 세팅] 3:2 비율 적용
-        row_cols = st.columns([3, 2])
+        # 💡 데이터 줄도 4:1 배분
+        row_cols = st.columns([4, 1])
         
-        # [수정] 데이터 줄에도 class='board-row' 삽입
         info_string = f"<div class='board-row' style='font-size: 15px; padding-top: 5px; white-space: nowrap;'><b>{row['name']}</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <span style='color: #d32f2f; font-weight: bold;'>{row['mexico']} : {row['korea']}</span> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; {row['status_text']}/{row['paid_mark']}</div>"
         row_cols[0].markdown(info_string, unsafe_allow_html=True)
         
