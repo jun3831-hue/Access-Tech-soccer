@@ -73,11 +73,11 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 📱 폰에서 표가 안 깨지도록 만드는 핵심 CSS 주입
+# 📱 해상도별 자동 글자 크기 조절 (미디어 쿼리 CSS)
 # ------------------------------------------------
 st.markdown("""
     <style>
-    /* 모바일 환경에서 컬럼이 밑으로 떨어지지 않고 무조건 가로 정렬 유지 */
+    /* 기본 정렬 유지 및 줄바꿈 방지 */
     div[data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -85,16 +85,36 @@ st.markdown("""
     }
     div[data-testid="column"] {
         min-width: 0px !important;
+        padding: 0px 2px !important;
     }
-    /* 모바일에서 버튼 텍스트가 짤리지 않도록 패딩 및 폰트 압축 */
+    div[data-testid="stMarkdownContainer"] p {
+        white-space: nowrap !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* 🖥️ PC 환경 (기본 크기) */
     .stButton > button {
         width: 100% !important;
-        padding: 2px 0px !important;
-        font-size: 11px !important;
-    }
-    /* 글자 크기 미세 조정 */
-    p, div {
+        padding: 4px !important;
         font-size: 13px !important;
+    }
+    p, div {
+        font-size: 14px !important;
+    }
+
+    /* 📱 모바일 환경 (화면 너비 600px 이하일 때 극단적으로 축소) */
+    @media (max-width: 600px) {
+        p, div {
+            font-size: 10px !important; /* 글자 크기를 10px로 축소 */
+        }
+        .stButton > button {
+            width: 100% !important;
+            padding: 1px 0px !important;
+            font-size: 9px !important; /* 버튼 글자 크기를 9px로 축소 */
+            min-height: 22px !important;
+            height: 22px !important;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -103,7 +123,7 @@ st.markdown("""
 # 🎨 화면 UI 시작
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 맞추기 내기!")
-st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
+st.info(f"💸 **참가비 입금 계좌:** {ACCOUNT_INFO}")
 
 # 마감 상태 메시지
 if is_open:
@@ -211,7 +231,7 @@ if st.session_state.action_type and is_open:
                 st.error("❌ 비밀번호가 일치하지 않습니다.")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (모바일 최적화 4열 그리드 구조)
+# 📊 현재 생존 현황 (해상도 대응 7열 원복 구조)
 # ------------------------------------------------
 st.subheader("📊 현재 생존 현황 (수정/삭제 가능)")
 
@@ -223,32 +243,31 @@ if not df.empty:
     else:
         df['status_text'] = df.apply(lambda x: '☠️탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🏃생존', axis=1)
         
-    # [모바일 크러시 방지] 4개 컬럼으로 대폭 축소하여 가로 배치 비율 조정
-    grid_cols = st.columns([3.5, 2.5, 2, 2])
-    grid_cols[0].markdown("**이름 (상태/입금)**")
-    grid_cols[1].markdown("**예측 (멕:한)**")
-    grid_cols[2].markdown("**수정**")
-    grid_cols[3].markdown("**삭제**")
-    st.markdown("<hr style='margin:2px 0px 8px 0px;'>", unsafe_allow_html=True)
+    # 7개 열의 가로 너비 비율을 글자 길이에 맞춰 타이트하게 미세 조정
+    grid_cols = st.columns([1.8, 1.1, 1.1, 1.1, 1.4, 0.9, 0.9])
+    grid_cols[0].markdown("**이름**")
+    grid_cols[1].markdown("**멕시코**")
+    grid_cols[2].markdown("**한국**")
+    grid_cols[3].markdown("**상태**")
+    grid_cols[4].markdown("**입금**")
+    grid_cols[5].markdown("**수정**")
+    grid_cols[6].markdown("**삭제**")
+    st.markdown("<hr style='margin:2px 0px 6px 0px;'>", unsafe_allow_html=True)
     
     for index, row in df.iterrows():
-        r_cols = st.columns([3.5, 2.5, 2, 2])
+        r_cols = st.columns([1.8, 1.1, 1.1, 1.1, 1.4, 0.9, 0.9])
+        r_cols[0].write(row['name'])
+        r_cols[1].write(str(row['mexico']))
+        r_cols[2].write(str(row['korea']))
+        r_cols[3].write(row['status_text'])
+        r_cols[4].write(row['paid'])
         
-        # 이름 칸에 상태 이모지와 입금 여부를 압축하여 일괄 표출
-        paid_mark = "완료" if row['paid'] == '✅ 완료' else "미입금"
-        info_text = f"{row['name']} ({row['status_text']}/{paid_mark})"
-        r_cols[0].write(info_text)
-        
-        # 스코어 예측값 결합 표출
-        score_text = f"{row['mexico']} : {row['korea']}"
-        r_cols[1].write(score_text)
-        
-        if r_cols[2].button("수정", key=f"edit_{row['name']}", disabled=not is_open):
+        if r_cols[5].button("수정", key=f"edit_{row['name']}", disabled=not is_open):
             st.session_state.action_type = "edit"
             st.session_state.action_name = row['name']
             st.rerun()
             
-        if r_cols[3].button("삭제", key=f"del_{row['name']}", disabled=not is_open):
+        if r_cols[6].button("삭제", key=f"del_{row['name']}", disabled=not is_open):
             st.session_state.action_type = "delete"
             st.session_state.action_name = row['name']
             st.rerun()
@@ -269,7 +288,7 @@ else:
 st.markdown("---")
 
 # ------------------------------------------------
-# 🛠️ 관리자 전용 패널
+# 🛠️ 관리자 전용 패널 및 CSV 백업 버튼
 # ------------------------------------------------
 with st.expander("🔐 방장 전용 관리자 패널"):
     admin_input = st.text_input("관리자 비밀번호", type="password")
@@ -288,5 +307,16 @@ with st.expander("🔐 방장 전용 관리자 패널"):
             conn.commit()
             st.success("입금 상태가 업데이트되었습니다!")
             st.rerun()
+            
+        # 서버 다운 대비 백업용 기능
+        st.markdown("---")
+        st.write("### 💾 서버 데이터 백업")
+        csv_data = df_admin[['name', 'paid']].to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 현재 투표 현황 다운로드 (CSV)",
+            data=csv_data,
+            file_name=f"worldcup_backup_{datetime.now().strftime('%m%d_%H%M')}.csv",
+            mime="text/csv"
+        )
     elif admin_input != "":
         st.error("관리자 비밀번호가 틀렸습니다.")
