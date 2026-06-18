@@ -76,7 +76,7 @@ live_mx, live_kr = get_live_score()
 # 🎨 화면 UI 시작
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 맞추기 내기!")
-st.info(f"💸 **참가비 입금 계좌:** {ACCOUNT_INFO}")
+st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 # 마감 상태 메시지
 if is_open:
