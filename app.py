@@ -61,7 +61,7 @@ def get_live_score():
 live_mx, live_kr = get_live_score()
 
 # ------------------------------------------------
-# 🎨 화면 UI 시작 (핀셋 타겟팅 CSS)
+# 🎨 화면 UI 시작 (유령 여백 제거 및 스크롤 방지 CSS)
 # ------------------------------------------------
 st.title("⚽ 한국 vs 멕시코 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
@@ -77,35 +77,26 @@ st.markdown("""
         }
     }
     
-    /* 2. 🚨 [핵심] 'board-row' 이름표가 있는 가로줄(stHorizontalBlock)만 콕 집어서 조작! (투표 폼은 간섭 X) */
+    /* 2. 🚨 [핵심] 보이지 않는 유령 공간과 틈새(Gap)를 없애서 가로 스크롤 원천 차단 */
     div[data-testid="stHorizontalBlock"]:has(.board-row) {
-        max-width: 800px !important;   /* 방장님 세팅: 400px 제한 */
-        margin: 0 auto !important;     /* PC에서 정중앙 배치 */
+        max-width: 400px !important;       /* PC에서는 방장님 세팅(400px) 유지 */
+        width: 100% !important;            /* 모바일 화면을 넘어가지 않게 100% 족쇄 */
+        margin: 0 auto !important;         /* 정중앙 정렬 */
         flex-direction: row !important;
-        flex-wrap: nowrap !important;  /* 줄바꿈 절대 방지 */
+        flex-wrap: nowrap !important;      /* 줄바꿈 방지 */
         align-items: center !important;
+        
+        /* 👇 여기에 3줄이 추가되었습니다 👇 */
+        gap: 0px !important;               /* 스트림릿의 기본 투명 틈새 0으로 압축 */
+        box-sizing: border-box !important; /* 패딩 때문에 화면 밖으로 밀리는 현상 방지 */
+        overflow: hidden !important;       /* 그럼에도 삐져나가는 1px 껍데기 절단 */
     }
+    
     div[data-testid="stHorizontalBlock"]:has(.board-row) > div[data-testid="column"] {
         min-width: 0px !important;
         padding: 0px 2px !important;
     }
     </style>
-""", unsafe_allow_html=True)
-
-if is_open:
-    time_left = DEADLINE - now_kst
-    hours, remainder = divmod(time_left.seconds, 3600)
-    minutes, _ = divmod(remainder, 60)
-    st.success(f"⏳ 마감까지 **{time_left.days}일 {hours}시간 {minutes}분** 남았습니다. (오전 10시 마감)")
-elif not is_finished:
-    st.warning("🏃 **투표가 마감되었습니다!** 경기가 진행 중입니다.")
-else:
-    st.error("🚨 **경기가 종료되었습니다!** 결과를 확인하세요.")
-
-st.markdown(f"""
-    <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
-        <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
-    </div>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------
