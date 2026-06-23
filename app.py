@@ -8,15 +8,17 @@ from streamlit_autorefresh import st_autorefresh
 # ------------------------------------------------
 # ⚙️ 기본 설정 및 DB 연동
 # ------------------------------------------------
-DB_NAME = 'worldcup.db'
+# 💡 기존 멕시코전 데이터와 섞이지 않도록 새 DB 파일 생성
+DB_NAME = 'worldcup_sa.db'
 ADMIN_PW = 'jeon0915'
 ACCOUNT_INFO = '카카오페이 또는 카카오뱅크 3333-10-3569994 전광용'
 
 API_KEY = "7a57cc65db3f47e4adea9e1468b053e1"
 st_autorefresh(interval=10000, key="score_auto_refresh")
 
-DEADLINE = datetime(2026, 6, 19, 10, 0, 0)
-MATCH_END = datetime(2026, 6, 19, 12, 0, 0)
+# 💡 6월 25일 오전 10시 마감 적용
+DEADLINE = datetime(2026, 6, 25, 10, 0, 0)
+MATCH_END = datetime(2026, 6, 25, 12, 0, 0)
 
 now_kst = datetime.utcnow() + timedelta(hours=9)
 is_open = now_kst < DEADLINE
@@ -25,7 +27,7 @@ is_finished = now_kst >= MATCH_END
 conn = sqlite3.connect(DB_NAME, check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS bets 
-             (name TEXT PRIMARY KEY, pin TEXT, mexico INT, korea INT, paid TEXT)''')
+             (name TEXT PRIMARY KEY, pin TEXT, safrica INT, korea INT, paid TEXT)''')
 conn.commit()
 
 if "target_name" not in st.session_state:
@@ -56,12 +58,12 @@ def get_live_score():
     except:
         return 0, 0
 
-live_mx, live_kr = get_live_score()
+live_sa, live_kr = get_live_score()
 
 # ------------------------------------------------
 # 🎨 화면 UI 시작
 # ------------------------------------------------
-st.title("⚽ 한국 vs 멕시코 점수 예측")
+st.title("⚽ 남아공 vs 한국 점수 예측")
 st.info(f"💸 **참가비(1만원) 입금 계좌:** {ACCOUNT_INFO}")
 
 st.markdown("""
@@ -88,7 +90,7 @@ else:
 
 st.markdown(f"""
     <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px;'>
-        <h2 style='margin: 0;'>멕시코 &nbsp;&nbsp; {live_mx} : {live_kr} &nbsp;&nbsp; 한국</h2>
+        <h2 style='margin: 0;'>남아공 &nbsp;&nbsp; {live_sa} : {live_kr} &nbsp;&nbsp; 한국</h2>
     </div>
 """, unsafe_allow_html=True)
 
@@ -102,7 +104,7 @@ with st.form("new_betting_form"):
     
     col1, col2 = st.columns(2)
     with col1:
-        mexico_score = st.selectbox("멕시코", options=list(range(15)), disabled=not is_open)
+        safrica_score = st.selectbox("남아공", options=list(range(15)), disabled=not is_open)
     with col2:
         korea_score = st.selectbox("한국", options=list(range(15)), disabled=not is_open)
     
@@ -114,10 +116,10 @@ with st.form("new_betting_form"):
         else:
             c.execute("SELECT name FROM bets WHERE name=?", (name,))
             if c.fetchone():
-                st.error("❌ 이미 등록된 이름입니다. 기존 내역을 수정하려면 아래 현황판에서 관리 체크박스를 눌러주세요.")
+                st.error("❌ 이미 등록된 이름입니다. 기존 내역을 수정하려면 아래 현황판에서 변경 체크박스를 눌러주세요.")
             else:
-                c.execute("INSERT INTO bets (name, pin, mexico, korea, paid) VALUES (?, ?, ?, ?, ?)", 
-                          (name, pin, mexico_score, korea_score, '❌ 미입금'))
+                c.execute("INSERT INTO bets (name, pin, safrica, korea, paid) VALUES (?, ?, ?, ?, ?)", 
+                          (name, pin, safrica_score, korea_score, '❌ 미입금'))
                 conn.commit()
                 st.success(f"🎉 {name}님 투표 완료!")
                 st.rerun()
@@ -139,12 +141,12 @@ if st.session_state.target_name and is_open:
         st.write("본인의 비밀번호 4자리를 입력해주세요.")
         input_pin = st.text_input("비밀번호 확인", type="password", max_chars=4)
         
-        new_mx, new_kr = 0, 0
+        new_sa, new_kr = 0, 0
         if action_type == "수정":
             st.info("새로운 예측 점수를 선택하세요.")
             c1, c2 = st.columns(2)
             with c1:
-                new_mx = st.selectbox("멕시코", options=list(range(15)))
+                new_sa = st.selectbox("남아공", options=list(range(15)))
             with c2:
                 new_kr = st.selectbox("한국", options=list(range(15)))
                 
@@ -164,7 +166,7 @@ if st.session_state.target_name and is_open:
             
             if input_pin == orig_pin:
                 if action_type == "수정":
-                    c.execute("UPDATE bets SET mexico=?, korea=? WHERE name=?", (new_mx, new_kr, t_name))
+                    c.execute("UPDATE bets SET safrica=?, korea=? WHERE name=?", (new_sa, new_kr, t_name))
                     st.success(f"✅ {t_name}님의 점수가 수정되었습니다.")
                 elif action_type == "삭제":
                     c.execute("DELETE FROM bets WHERE name=?", (t_name,))
@@ -178,55 +180,43 @@ if st.session_state.target_name and is_open:
     st.markdown("---")
 
 # ------------------------------------------------
-# 📊 현재 생존 현황 (잘림 방지 + 생존/탈락 자동 정렬)
+# 📊 현재 생존 현황
 # ------------------------------------------------
 st.subheader("📊 현재 투표 현황")
 
-df = pd.read_sql("SELECT name, mexico, korea, paid FROM bets", conn)
+df = pd.read_sql("SELECT name, safrica, korea, paid FROM bets", conn)
 
 if not df.empty:
-    # 1. 상태 이모티콘 및 텍스트 매핑
     if is_finished:
-        df['🚥 상태'] = df.apply(lambda x: '🎉 당첨' if (x['mexico'] == live_mx) and (x['korea'] == live_kr) else '🔴 탈락', axis=1)
+        df['🚥 상태'] = df.apply(lambda x: '🎉 당첨' if (x['safrica'] == live_sa) and (x['korea'] == live_kr) else '🔴 탈락', axis=1)
     else:
-        df['🚥 상태'] = df.apply(lambda x: '🔴 탈락' if (x['mexico'] < live_mx) or (x['korea'] < live_kr) else '🟢 생존', axis=1)
+        df['🚥 상태'] = df.apply(lambda x: '🔴 탈락' if (x['safrica'] < live_sa) or (x['korea'] < live_kr) else '🟢 생존', axis=1)
     
-    # 💡 [정렬 핵심] 당첨(1) -> 생존(2) -> 탈락(3) 순서로 보이지 않는 랭킹 부여
     sort_mapping = {'🎉 당첨': 1, '🟢 생존': 2, '🔴 탈락': 3}
     df['sort_key'] = df['🚥 상태'].map(sort_mapping)
-    
-    # 상태 순서대로 먼저 정렬하고, 상태가 같으면 이름 가나다순으로 정렬
     df = df.sort_values(by=['sort_key', 'name']).reset_index(drop=True)
     
-    # 2. 입금 및 예측 데이터 가공
     df['입금'] = df['paid'].apply(lambda x: '✅ 완료' if '완료' in x else '❌ 미입금')
-    df['멕시코:한국'] = df['mexico'].astype(str) + " : " + df['korea'].astype(str)
+    df['남아공:한국'] = df['safrica'].astype(str) + " : " + df['korea'].astype(str)
     
-    # 3. 방장님 요청: 머리글 가운데 4칸 띄움
     df['이름'] = df['name']
-    df['변경'] = False  # 체크박스 기본값 (이모티콘 제거 완료)
+    df['변경'] = False  
     
-    # 4. 화면에 띄울 열 순서 최종 조립
-    display_df = df[['🚥 상태', '이름', '멕시코:한국', '입금', '변경']]
-    
-    # 💡 [높이 조절 핵심] 데이터 개수에 맞춰 표 높이를 동적으로 늘려줌 (1줄당 약 36px + 위아래 여백)
-    # 이렇게 하면 10명을 넘어가도 스크롤에 갇히지 않고 쭉 늘어납니다.
+    display_df = df[['🚥 상태', '이름', '남아공:한국', '입금', '변경']]
     dynamic_height = (len(display_df) + 1) * 36 + 10
     
-    # 5. 스트림릿 순정 Data Editor 출력
     edited_df = st.data_editor(
         display_df,
         key=f"data_editor_{st.session_state.target_name}",
         hide_index=True,
         use_container_width=True,
-        height=dynamic_height,  # 동적 높이 강제 적용!
-        disabled=["🚥 상태", "이름", "멕시코:한국", "입금"], 
+        height=dynamic_height,
+        disabled=["🚥 상태", "이름", "남아공:한국", "입금"], 
         column_config={
             "변경": st.column_config.CheckboxColumn("변경", default=False)
         }
     )
     
-    # 6. 체크박스 감지 로직
     checked_rows = edited_df[edited_df['변경'] == True]
     if not checked_rows.empty:
         selected_name = checked_rows.iloc[0]['이름']
